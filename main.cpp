@@ -3,6 +3,7 @@
 #include <vector>
 #include <string>
 #include "stringproc.h"
+// #include "gpu.h"
 
 void object_file_interface(std::string fileName, 
 	std::vector<std::vector<float> > *vertex, 
@@ -15,11 +16,21 @@ int main(int argc, char const *argv[])
 		std::cout << "Usage: program [obj file] [vertex shader]\n";
 	}
 
+	// For vertex and face data
 	std::vector<std::vector<float> > v;
 	std::vector<std::vector<int> > f;
 
+	std::vector<std::vector<int> > vs;
+
 	// Get all the vertex and face data
 	object_file_interface(argv[1], &v, &f);
+
+	// Read vertex shader program into vector
+	// vertex_shader_interface(argv[2], &vs)
+
+	unsigned __int128 wow = 0x01;
+
+	// Load data and program bin into gpu
 
 	return 0;
 }

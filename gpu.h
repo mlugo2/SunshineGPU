@@ -34,7 +34,7 @@ private:
 	u8 get_srcN_y(u64, u8);
 	u8 get_srcN_x(u64, u8);
 
-	u8 get_bits(u64, u16, u16);
+	void debug(u64);
 
 public:
 	gpu();

@@ -22,44 +22,6 @@ void gpu::execute( u8 FB[][SCREEN_WIDTH][3])
 
 	bool end = false;
 
-	// DEBUG
-	u64 w = 14183429296869597645;
-
-	// u8 b = get_bits(w, 15, 1);
-
-	u8 b = get_opcode(w);
-	cout << (u16)b << endl;
-
-	b = get_dest_type(w);
-	cout << (u16)b << endl;
-
-	b = get_dest_index(w);
-	cout << (u16)b << endl;
-
-	b = get_dest_w(w);
-	cout << (u16)b << endl;
-
-	b = get_dest_z(w);
-	cout << (u16)b << endl;
-
-	b = get_dest_y(w);
-	cout << (u16)b << endl;
-
-	b = get_dest_x(w);
-	cout << (u16)b << endl;
-
-	b = get_srcN_neg(w, 0);
-	cout << (u16)b << endl;
-
-	b = get_srcN_neg(w, 1);
-	cout << (u16)b << endl;
-
-	b = get_srcN_neg(w, 2);
-	cout << (u16)b << endl;
-
-
-	// DEBUG
-
 	// Start decoding
 	// while (!end)
 	// {
@@ -147,39 +109,141 @@ u8 gpu::get_srcN_neg(u64 instr, u8 n)
 	return (u8)instr;
 }
 
-u8 gpu::get_srcN_type(u64 instr, u8)
+u8 gpu::get_srcN_type(u64 instr, u8 n)
 {
-
+	instr &= 0x600000000000 >> (15*n);
+	instr >>= 45 - 15*n;
+	return (u8)instr;
 }
 
-u8 gpu::get_srcN_index(u64 instr, u8)
+u8 gpu::get_srcN_index(u64 instr, u8 n)
 {
-
+	instr &= 0x1E0000000000 >> (15*n);
+	instr >>= 41 - 15*n;
+	return (u8)instr;
 }
 
-u8 gpu::get_srcN_w(u64 instr, u8)
+u8 gpu::get_srcN_w(u64 instr, u8 n)
 {
-
+	instr &= 0x18000000000 >> (15*n);
+	instr >>= 39 - 15*n;
+	return (u8)instr;
 }
 
-u8 gpu::get_srcN_z(u64 instr, u8)
+u8 gpu::get_srcN_z(u64 instr, u8 n)
 {
-
+	instr &= 0x6000000000 >> (15*n);
+	instr >>= 37 - 15*n;
+	return (u8)instr;
 }
 
-u8 gpu::get_srcN_y(u64 instr, u8)
+u8 gpu::get_srcN_y(u64 instr, u8 n)
 {
-
+	instr &= 0x1800000000 >> (15*n);
+	instr >>= 35 - 15*n;
+	return (u8)instr;
 }
 
-u8 gpu::get_srcN_x(u64 instr, u8)
+u8 gpu::get_srcN_x(u64 instr, u8 n)
 {
-
+	instr &= 0x600000000 >> (15*n);
+	instr >>= 33 - 15*n;
+	return (u8)instr;
 }
 
-
-
-u8 gpu::get_bits(u64 num, u16 k, u16 p)
+void gpu::debug(u64 instr)
 {
-	return (((1 << k) - 1) & ( num >> (p - 1)));
+// DEBUG
+	u64 w = instr;
+
+	u8 b = get_opcode(w);
+	cout << (u16)b << endl;
+
+	b = get_dest_type(w);
+	cout << (u16)b << endl;
+
+	b = get_dest_index(w);
+	cout << (u16)b << endl;
+
+	b = get_dest_w(w);
+	cout << (u16)b << endl;
+
+	b = get_dest_z(w);
+	cout << (u16)b << endl;
+
+	b = get_dest_y(w);
+	cout << (u16)b << endl;
+
+	b = get_dest_x(w);
+	cout << (u16)b << endl;
+
+	b = get_srcN_neg(w, 0);
+	cout <<"source0 neg: "<< (u16)b << endl;
+
+	b = get_srcN_type(w, 0);
+	cout <<"source0 type: "<< (u16)b << endl;
+
+	b = get_srcN_index(w, 0);
+	cout <<"source0 index: "<< (u16)b << endl;
+
+	b = get_srcN_w(w, 0);
+	cout <<"source0 w: "<< (u16)b << endl;
+
+	b = get_srcN_z(w, 0);
+	cout <<"source0 z: "<< (u16)b << endl;
+
+	b = get_srcN_y(w, 0);
+	cout <<"source0 y: "<< (u16)b << endl;
+
+	b = get_srcN_x(w, 0);
+	cout <<"source0 x: "<< (u16)b << endl;
+
+	cout << "-------------------" << endl;
+
+	b = get_srcN_neg(w, 1);
+	cout <<"source1 neg: "<< (u16)b << endl;
+
+	b = get_srcN_type(w, 1);
+	cout <<"source1 type: "<< (u16)b << endl;
+
+	b = get_srcN_index(w, 1);
+	cout <<"source1 index: "<< (u16)b << endl;
+
+	b = get_srcN_w(w, 1);
+	cout <<"source1 w: "<< (u16)b << endl;
+
+	b = get_srcN_z(w, 1);
+	cout <<"source1 z: "<< (u16)b << endl;
+
+	b = get_srcN_y(w, 1);
+	cout <<"source1 y: "<< (u16)b << endl;
+
+	b = get_srcN_x(w, 1);
+	cout <<"source1 x: "<< (u16)b << endl;
+
+	cout << "-------------------" << endl;
+
+	b = get_srcN_neg(w, 2);
+	cout <<"source2 neg: "<< (u16)b << endl;
+
+	b = get_srcN_type(w, 2);
+	cout <<"source2 type: "<< (u16)b << endl;
+
+	b = get_srcN_index(w, 2);
+	cout <<"source2 index: "<< (u16)b << endl;
+
+	b = get_srcN_w(w, 2);
+	cout <<"source2 w: "<< (u16)b << endl;
+
+	b = get_srcN_z(w, 2);
+	cout <<"source2 z: "<< (u16)b << endl;
+
+	b = get_srcN_y(w, 2);
+	cout <<"source2 y: "<< (u16)b << endl;
+
+	b = get_srcN_x(w, 2);
+	cout <<"source2 x: "<< (u16)b << endl;
+
+
+	// DEBUG
 }

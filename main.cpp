@@ -35,12 +35,12 @@ int main(int argc, char const *argv[])
 
 	u8 FB[SCREEN_HEIGHT][SCREEN_WIDTH][3];
 
-	std::thread t1 {thread_screen, FB};
+	//std::thread t1 {thread_screen, FB};
 
 	gpu *myGPU = new gpu();
-	myGPU->execute();
+	myGPU->execute(FB);
 
-	t1.join();
+	// t1.join();
 
 	// Load data and microcode into gpu
 

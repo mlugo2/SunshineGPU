@@ -2,7 +2,10 @@
 #define _GPU_H
 
 #include <iostream>
+#include <vector>
 #include "common.h"
+
+using namespace std;
 
 class gpu
 {
@@ -15,6 +18,9 @@ private:
 
 	u128 VAB[16];
 	u128 VOB[16];
+
+	// Pipeline components
+	void geometry_processor();
 
 	// Helper methods
 	u8 get_opcode(u64);
@@ -48,7 +54,7 @@ public:
 	void execute( u8[][SCREEN_WIDTH][3]);
 	void load_const_mem();
 	void load_microcode();
-	void load_vab();
+	void load_vab( vector<vector<float> >, vector<int>);
 	
 };
 

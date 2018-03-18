@@ -3,8 +3,6 @@
 #include <iostream>
 using namespace std;
 
-#include <stdio.h>
-
 gpu::gpu()
 {
 
@@ -17,6 +15,64 @@ gpu::~gpu()
 
 void gpu::execute( u8 FB[][SCREEN_WIDTH][3] )
 {
+	
+}
+
+void gpu::load_const_mem()
+{
+
+}
+
+void gpu::load_microcode()
+{
+
+}
+
+void gpu::load_vab( vector<vector<float> > v, vector<int> f)
+{
+	// Load face data into VAB
+	// Get x, y, z for first vertex
+	VAB[0].x = v[f[1]][0]; 
+	VAB[0].y = v[f[1]][1]; 
+	VAB[0].z = v[f[1]][2];
+	VAB[0].w = 1.0;
+
+	// Get position for second vertex
+	VAB[1].x = v[f[2]][0]; 
+	VAB[1].y = v[f[2]][1]; 
+	VAB[1].z = v[f[2]][2];
+	VAB[1].w = 1.0;
+
+	// Get position for thrid vertex
+	VAB[2].x = v[f[3]][0]; 
+	VAB[2].y = v[f[3]][1]; 
+	VAB[2].z = v[f[3]][2];
+	VAB[2].w = 1.0;
+
+	// Calculate initial normal
+	float V[] { VAB[1].x - VAB[0].x, VAB[1].y - VAB[0].y, VAB[1].z - VAB[0].z};
+	float W[] { VAB[2].x - VAB[0].x, VAB[2].y - VAB[0].y, VAB[2].z - VAB[0].z};
+	VAB[3].x = (V[1] * W[2]) - (V[2] * W[1]);
+	VAB[3].y = (V[2] * W[0]) - (V[0] * W[2]);
+	VAB[3].z = (V[0] * W[1]) - (V[1] * W[0]);
+	VAB[3].w = 1.0;
+
+	// Set default color
+	VAB[4].x = 255;
+	VAB[4].y = 255;
+	VAB[4].z = 255;
+	VAB[4].w = 1.0;
+
+}
+
+
+/********************************************************
+ *					Pipeline Components					*
+ *******************************************************/
+
+void gpu::geometry_processor()
+{
+
 	// Initialize program counter
 	u8 pc = 0;
 	u8 opcode;
@@ -104,23 +160,12 @@ void gpu::execute( u8 FB[][SCREEN_WIDTH][3] )
 
 				break;
 
-			case 0xFF:
+			case 0x3F:
 			default:
 				end = true;
 				break;
 		}
-	}
-
-}
-
-void gpu::load_const_mem()
-{
-
-}
-
-void gpu::load_microcode()
-{
-
+	} // end of while
 }
 
 /********************************************************

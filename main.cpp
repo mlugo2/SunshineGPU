@@ -11,38 +11,46 @@
 
 int main(int argc, char const *argv[])
 {
+
+	// Check for arguments
 	// if ( argc < 3 )
 	// {
 	// 	std::cout << "Usage: program [obj file] [vertex shader]\n";
 	// 	return 1;
 	// }
 
-	// // For vertex and face data
-	// std::vector<std::vector<float> > v;
-	// std::vector<std::vector<int> > f;
+	// For vertex and face data
+	std::vector<std::vector<float> > v;
+	std::vector<std::vector<int> > f;
 
-	// std::vector<std::vector<int> > vs;
+	// Vertex shader program
+	std::vector<std::vector<int> > vs;
 
-	// // Get all the vertex and face data
-	// object_file_interface(argv[1], &v, &f);
+	// frame buffer
+	u8 FB[SCREEN_HEIGHT][SCREEN_WIDTH][3];
+
+	// Get all the vertex and face data
+	object_file_interface(argv[1], &v, &f);
 
 	// // Read vertex shader program into vector
 	// vertex_shader_interface(argv[2], &vs);
 
-	// gpu *myGPU = new gpu();
-
-	// myGPU->InitScreen();
-
-	u8 FB[SCREEN_HEIGHT][SCREEN_WIDTH][3];
-
+	// Initialize the screen
 	//std::thread t1 {thread_screen, FB};
 
 	gpu *myGPU = new gpu();
-	myGPU->execute(FB);
+
+	// GPU execution begins here
+	// Run the GPU for the number of faces available
+	int i = 0;
+	while (f.size() != i)
+	{
+		myGPU->load_vab(v, f[i]);
+		i++;
+	}
+	// myGPU->execute(FB);
 
 	// t1.join();
-
-	// Load data and microcode into gpu
 
 	return 0;
 }

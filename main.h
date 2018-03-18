@@ -87,7 +87,6 @@ void object_file_interface(std::string fileName,
 	for (int i = 0; i < vertNum; ++i)
 	{
 		tokenize(data[i], tempData, delims);
-		//data.erase(data.begin());
 
 		for ( auto j : tempData )
 		{

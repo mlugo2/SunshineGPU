@@ -18,9 +18,9 @@ typedef signed long long 	s64;
 
 typedef struct __u128
 {
-	u32 w, z, y, x;
+	float w, z, y, x;
 	__u128(){ }
-	__u128 (u32 w1, u32 z1, u32 y1, u32 x1) {
+	__u128 (float w1, float z1, float y1, float x1) {
 		w = w1; z = z1; y = y1; x = x1;
 	}
 	

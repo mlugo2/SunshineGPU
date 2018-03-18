@@ -37,10 +37,6 @@ private:
 	void debug(u64);
 
 	u128 swizzle(u128, u8, u8, u8, u8);
-	// u32 get_w_comp(u128);
-	// u32 get_z_comp(u128);
-	// u32 get_y_comp(u128);
-	// u32 get_x_comp(u128);
 
 	// Instuction execution methods
 	void mov_instr(u64);

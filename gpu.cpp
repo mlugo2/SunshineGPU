@@ -40,7 +40,7 @@ void gpu::execute( u8 FB[][SCREEN_WIDTH][3] )
 
 				break;
 
-			case 0x02:		// MULL
+			case 0x02:		// MUL
 
 				break;
 
@@ -348,31 +348,127 @@ void gpu::mov_instr(u64 instr)
 		// We gotta swizzle now..
 		temp = swizzle(register_file[srcIndex], srcW, srcZ, srcY, srcX);
 
+		// Negate?
+		if (get_srcN_neg(instr, 0))
+		{
+			temp.x = -temp.x;
+			temp.y = -temp.y;
+			temp.z = -temp.z;
+			temp.w = -temp.w;
+		}
+
+		// Finally any masks?
+		if (destW) register_file[destIndex].w = temp.w;
+		if (destZ) register_file[destIndex].z = temp.z;
+		if (destY) register_file[destIndex].y = temp.y;
+		if (destX) register_file[destIndex].x = temp.x;
+
 	}
 	// mov r[], v[] 
 	else if ( dest == 0 && src == 1 )
 	{
+		// We gotta swizzle now..
+		temp = swizzle(VAB[srcIndex], srcW, srcZ, srcY, srcX);
+
+		// Negate?
+		if (get_srcN_neg(instr, 0))
+		{
+			temp.x = -temp.x;
+			temp.y = -temp.y;
+			temp.z = -temp.z;
+			temp.w = -temp.w;
+		}
+
+		// Finally any masks?
+		if (destW) register_file[destIndex].w = temp.w;
+		if (destZ) register_file[destIndex].z = temp.z;
+		if (destY) register_file[destIndex].y = temp.y;
+		if (destX) register_file[destIndex].x = temp.x;
 
 	}
 	// mov r[], c[]
 	else if ( dest == 0 && src == 2 )
 	{
+		// We gotta swizzle now..
+		temp = swizzle(constant_mem[srcIndex], srcW, srcZ, srcY, srcX);
 
+		// Negate?
+		if (get_srcN_neg(instr, 0))
+		{
+			temp.x = -temp.x;
+			temp.y = -temp.y;
+			temp.z = -temp.z;
+			temp.w = -temp.w;
+		}
+
+		// Finally any masks?
+		if (destW) register_file[destIndex].w = temp.w;
+		if (destZ) register_file[destIndex].z = temp.z;
+		if (destY) register_file[destIndex].y = temp.y;
+		if (destX) register_file[destIndex].x = temp.x;
 	}
 	// mov o[], r[]
 	else if ( dest == 1 && src == 0 )
 	{
-		
+		// We gotta swizzle now..
+		temp = swizzle(register_file[srcIndex], srcW, srcZ, srcY, srcX);
+
+		// Negate?
+		if (get_srcN_neg(instr, 0))
+		{
+			temp.x = -temp.x;
+			temp.y = -temp.y;
+			temp.z = -temp.z;
+			temp.w = -temp.w;
+		}
+
+		// Finally any masks?
+		if (destW) VOB[destIndex].w = temp.w;
+		if (destZ) VOB[destIndex].z = temp.z;
+		if (destY) VOB[destIndex].y = temp.y;
+		if (destX) VOB[destIndex].x = temp.x;	
 	}
 	// mov o[], v[] 
 	else if ( dest == 1 && src == 1 )
 	{
+		// We gotta swizzle now..
+		temp = swizzle(VAB[srcIndex], srcW, srcZ, srcY, srcX);
 
+		// Negate?
+		if (get_srcN_neg(instr, 0))
+		{
+			temp.x = -temp.x;
+			temp.y = -temp.y;
+			temp.z = -temp.z;
+			temp.w = -temp.w;
+		}
+
+		// Finally any masks?
+		if (destW) VOB[destIndex].w = temp.w;
+		if (destZ) VOB[destIndex].z = temp.z;
+		if (destY) VOB[destIndex].y = temp.y;
+		if (destX) VOB[destIndex].x = temp.x;
 	}
 	// mov o[], c[]
 	else if ( dest == 1 && src == 2 )
 	{
+		// We gotta swizzle now..
+		temp = swizzle(constant_mem[srcIndex], srcW, srcZ, srcY, srcX);
 
+		// Negate?
+		if (get_srcN_neg(instr, 0))
+		{
+			temp.x = -temp.x;
+			temp.y = -temp.y;
+			temp.z = -temp.z;
+			temp.w = -temp.w;
+		}
+
+		// Finally any masks?
+		if (destW) VOB[destIndex].w = temp.w;
+		if (destZ) VOB[destIndex].z = temp.z;
+		if (destY) VOB[destIndex].y = temp.y;
+		if (destX) VOB[destIndex].x = temp.x;
 	}
 
 
@@ -399,30 +495,3 @@ u128 gpu::swizzle(u128 data, u8 w, u8 z, u8 y, u8 x)
 
 	return data;
 }
-
-// u32 gpu::get_w_comp(u128 d)
-// {
-// 	d &= 0xFFFFFFFF;
-// 	return (u32)d;
-// } 
-
-// u32 gpu::get_z_comp(u128 d)
-// {
-// 	d &= 0xFFFFFFFF00000000;
-// 	d >>= 32;
-// 	return (u32)d;
-// }
-
-// u32 gpu::get_y_comp(u128 d)
-// {
-// 	u64 t = (d>>64);
-// 	t &= 0xFFFFFFFF;
-// 	return (u32)t;
-// }
-
-// u32 gpu::get_x_comp(u128 d)
-// {
-// 	d &= 0xFFFFFFFF000000000000000000000000;
-// 	d >>= 96;
-// 	return (u32)d;
-// }

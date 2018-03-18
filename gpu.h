@@ -11,7 +11,7 @@ private:
 
 	u128 register_file[12];
 	u128 constant_mem[96];
-	u128 instruction_mem[128];
+	u64 instruction_mem[128];
 
 	u128 VAB[16];
 	u128 VOB[16];
@@ -35,6 +35,15 @@ private:
 	u8 get_srcN_x(u64, u8);
 
 	void debug(u64);
+
+	u128 swizzle(u128, u8, u8, u8, u8);
+	// u32 get_w_comp(u128);
+	// u32 get_z_comp(u128);
+	// u32 get_y_comp(u128);
+	// u32 get_x_comp(u128);
+
+	// Instuction execution methods
+	void mov_instr(u64);
 
 public:
 	gpu();

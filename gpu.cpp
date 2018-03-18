@@ -3,6 +3,8 @@
 #include <iostream>
 using namespace std;
 
+#include <stdio.h>
+
 gpu::gpu()
 {
 
@@ -13,29 +15,101 @@ gpu::~gpu()
 	
 }
 
-void gpu::execute( u8 FB[][SCREEN_WIDTH][3])
+void gpu::execute( u8 FB[][SCREEN_WIDTH][3] )
 {
 	// Initialize program counter
 	u8 pc = 0;
 	u8 opcode;
-	u128 instruction;
+	u64 instruction;
 
 	bool end = false;
 
 	// Start decoding
-	// while (!end)
-	// {
-	// 	// Fetch
-	// 	instruction = instruction_mem[pc++];
+	while (!end)
+	{
+		// Fetch
+		instruction = instruction_mem[pc++];
 
-	// 	// Decode
-	// 	switch(opcode)
-	// 	{
-	// 		default:
-	// 		end = true;
-	// 		break;
-	// 	}
-	// }
+		opcode = get_opcode(instruction);
+
+		// Decode
+		switch(opcode)
+		{
+			case 0x01:		// MOV
+				mov_instr(instruction);
+
+				break;
+
+			case 0x02:		// MULL
+
+				break;
+
+			case 0x03:		// ADD
+
+				break;
+
+			case 0x04:		// MAD
+
+				break;
+
+			case 0x05:		// DST
+
+				break;
+
+			case 0x06:		// MIN
+
+				break;
+
+			case 0x07:		// MAX
+
+				break;
+
+			case 0x08:		// SLT
+
+				break;
+
+			case 0x09:		// SGE
+
+				break;
+
+			case 0x0A:		// RCP
+
+				break;
+
+			case 0x0B:		// RSQ
+
+				break;
+
+			case 0x0C:		// DP3
+
+				break;
+
+			case 0x0D:		// DP4
+
+				break;
+
+			case 0x0E:		// LOG
+
+				break;
+
+			case 0x0F:		// EXP
+
+				break;
+
+			case 0x10:		// LIT
+
+				break;
+
+			case 0x11:		// ARL
+
+				break;
+
+			case 0xFF:
+			default:
+				end = true;
+				break;
+		}
+	}
 
 }
 
@@ -247,3 +321,108 @@ void gpu::debug(u64 instr)
 
 	// DEBUG
 }
+
+void gpu::mov_instr(u64 instr)
+{
+
+	u128 temp;
+
+	// Determine destination and source paths
+	u8 dest = get_dest_type(instr);
+	u8 destIndex = get_dest_index(instr);
+	u8 destW = get_dest_w(instr);
+	u8 destZ = get_dest_z(instr);
+	u8 destY = get_dest_y(instr);
+	u8 destX = get_dest_x(instr);
+
+	u8 src = get_srcN_type(instr, 0);
+	u8 srcIndex = get_srcN_index(instr, 0);
+	u8 srcW = get_srcN_w(instr, 0);
+	u8 srcZ = get_srcN_z(instr, 0);
+	u8 srcY = get_srcN_y(instr, 0);
+	u8 srcX = get_srcN_x(instr, 0);
+
+	// mov r[], r[]
+	if ( dest == 0 && src == 0 )
+	{
+		// We gotta swizzle now..
+		temp = swizzle(register_file[srcIndex], srcW, srcZ, srcY, srcX);
+
+	}
+	// mov r[], v[] 
+	else if ( dest == 0 && src == 1 )
+	{
+
+	}
+	// mov r[], c[]
+	else if ( dest == 0 && src == 2 )
+	{
+
+	}
+	// mov o[], r[]
+	else if ( dest == 1 && src == 0 )
+	{
+		
+	}
+	// mov o[], v[] 
+	else if ( dest == 1 && src == 1 )
+	{
+
+	}
+	// mov o[], c[]
+	else if ( dest == 1 && src == 2 )
+	{
+
+	}
+
+
+}
+
+u128 gpu::swizzle(u128 data, u8 w, u8 z, u8 y, u8 x)
+{
+	// No swizzle 
+	if (w == 3 && z == 2 && y == 1 && x == 0)
+		return data;
+
+	u32 temp[4];
+
+	// Tear apart all componets, put them in array..
+	temp[0] = data.x;
+	temp[1] = data.y;
+	temp[2] = data.z;
+	temp[3] = data.w;
+
+	data.x = temp[x];
+	data.y = temp[y];
+	data.z = temp[z];
+	data.w = temp[w];
+
+	return data;
+}
+
+// u32 gpu::get_w_comp(u128 d)
+// {
+// 	d &= 0xFFFFFFFF;
+// 	return (u32)d;
+// } 
+
+// u32 gpu::get_z_comp(u128 d)
+// {
+// 	d &= 0xFFFFFFFF00000000;
+// 	d >>= 32;
+// 	return (u32)d;
+// }
+
+// u32 gpu::get_y_comp(u128 d)
+// {
+// 	u64 t = (d>>64);
+// 	t &= 0xFFFFFFFF;
+// 	return (u32)t;
+// }
+
+// u32 gpu::get_x_comp(u128 d)
+// {
+// 	d &= 0xFFFFFFFF000000000000000000000000;
+// 	d >>= 96;
+// 	return (u32)d;
+// }

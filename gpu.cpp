@@ -3,6 +3,8 @@
 #include <iostream>
 using namespace std;
 
+#include <stdio.h>
+
 gpu::gpu()
 {
 
@@ -15,17 +17,28 @@ gpu::~gpu()
 
 void gpu::execute( u8 FB[][SCREEN_WIDTH][3] )
 {
-	
+	geometry_processor();
 }
 
 void gpu::load_const_mem()
 {
+	// Transform matrix
+	constant_mem[0].x = 1.0; constant_mem[0].y = 0.0; constant_mem[0].z = 0.0; constant_mem[0].w = 0.0;
+	constant_mem[1].x = 0.0; constant_mem[1].y = 1.0; constant_mem[1].z = 0.0; constant_mem[1].w = 0.0;
+	constant_mem[2].x = 0.0; constant_mem[2].y = 0.0; constant_mem[2].z = 1.0; constant_mem[2].w = 0.0;
+	constant_mem[3].x = 0.0; constant_mem[3].y = 0.0; constant_mem[3].z = 0.0; constant_mem[3].w = 1.0;
 
+	// Light vector
+	constant_mem[4].x = 0.0; constant_mem[4].y = 0.0; constant_mem[4].z = 0.0; constant_mem[4].w = 0.0;
 }
 
-void gpu::load_microcode()
+void gpu::load_microcode(vector<u64> vs)
 {
-
+	int index = 0;
+	for ( auto i : vs )
+	{
+		instruction_mem[index++] = i;
+	}
 }
 
 void gpu::load_vab( vector<vector<float> > v, vector<int> f)
@@ -87,6 +100,8 @@ void gpu::geometry_processor()
 		instruction = instruction_mem[pc++];
 
 		opcode = get_opcode(instruction);
+
+		printf("opcode: %x\n", opcode);
 
 		// Decode
 		switch(opcode)

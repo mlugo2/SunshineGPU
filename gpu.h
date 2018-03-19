@@ -53,7 +53,7 @@ public:
 
 	void execute( u8[][SCREEN_WIDTH][3]);
 	void load_const_mem();
-	void load_microcode();
+	void load_microcode(vector<u64>);
 	void load_vab( vector<vector<float> >, vector<int>);
 	
 };

@@ -7,7 +7,7 @@ void object_file_interface(std::string fileName,
 	std::vector<std::vector<int> > *face);
 
 void vertex_shader_interface(std::string fileName, 
-	std::vector<std::vector<int> > *vertexShader );
+	std::vector<unsigned long long int > *vertexShader );
 
 void object_file_interface(std::string fileName, 
 	std::vector<std::vector<float> > *vertex, 
@@ -121,9 +121,32 @@ void object_file_interface(std::string fileName,
 
 }
 
+#include <iostream>
+using namespace std;
+
 void vertex_shader_interface(std::string fileName, 
-	std::vector<std::vector<int> > *vertexShader )
+	std::vector<unsigned long long int > *vertexShader )
 {
+	// Opening file
+	std::ifstream myFile;
+	myFile.open(fileName.data());
+
+	// Read file into vector for easier processing
+	std::vector<std::string> data;
+	std::string line;
+	while( myFile.good() )
+	{
+		getline(myFile, line);
+		line[line.length()] = '\0';
+		data.push_back(line);
+	}
+
+	myFile.close();
+
+	for ( auto i : data )
+	{
+		vertexShader->push_back(stoull(i,0,0));
+	}
 
 }
 

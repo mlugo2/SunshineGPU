@@ -21,6 +21,11 @@ private:
 
 	// Pipeline components
 	void geometry_processor();
+	void rendering_engine();
+
+	// Sub pipeline methods
+	void projection (u128 *);
+	void rasteration(u128[]);
 
 	// Helper methods
 	u8 get_opcode(u64);

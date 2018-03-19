@@ -18,6 +18,7 @@ gpu::~gpu()
 void gpu::execute( u8 FB[][SCREEN_WIDTH][3] )
 {
 	geometry_processor();
+	rendering_engine();
 }
 
 void gpu::load_const_mem()
@@ -101,7 +102,7 @@ void gpu::geometry_processor()
 
 		opcode = get_opcode(instruction);
 
-		printf("opcode: %x\n", opcode);
+		// cout << (u16)opcode << endl;
 
 		// Decode
 		switch(opcode)
@@ -182,6 +183,31 @@ void gpu::geometry_processor()
 		}
 	} // end of while
 }
+
+void gpu::rendering_engine()
+{
+	// Here we do all the projection and other stuff..
+	projection(VOB);
+}
+
+void gpu::projection(u128 *VOB)
+{
+	// cout << "VOB stuff......." << endl;
+	// cout << VOB[0].x << " " << VOB[0].y << " " << VOB[0].z << " " << VOB[0].w << " " << endl;
+	// cout << VOB[1].x << " " << VOB[1].y << " " << VOB[1].z << " " << VOB[1].w << " " << endl;
+	// cout << VOB[2].x << " " << VOB[2].y << " " << VOB[2].z << " " << VOB[2].w << " " << endl;
+	// cout << VOB[3].x << " " << VOB[3].y << " " << VOB[3].z << " " << VOB[3].w << " " << endl;
+	// cout << endl;
+
+	// Change
+	VOB[0].x = 99.99;
+}
+
+void gpu::rasteration(u128 VOB[])
+{
+	
+}
+
 
 /********************************************************
  *					Helper Methods						*

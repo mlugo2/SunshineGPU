@@ -61,6 +61,7 @@ private:
 
 	// Instuction execution methods
 	void mov_instr(u64);
+	void mul_instr(u64);
 
 public:
 	gpu();

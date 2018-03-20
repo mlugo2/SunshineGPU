@@ -3,8 +3,6 @@
 #include <iostream>
 using namespace std;
 
-#include <stdio.h>
-
 gpu::gpu()
 {
 
@@ -72,9 +70,9 @@ void gpu::load_vab( vector<vector<float> > v, vector<int> f)
 	VAB[3].w = 1.0;
 
 	// Set default color
-	VAB[4].x = 255;
-	VAB[4].y = 255;
-	VAB[4].z = 255;
+	VAB[4].x = 15;
+	VAB[4].y = 90;
+	VAB[4].z = 23;
 	VAB[4].w = 1.0;
 
 }
@@ -102,18 +100,15 @@ void gpu::geometry_processor()
 
 		opcode = get_opcode(instruction);
 
-		// cout << (u16)opcode << endl;
-
 		// Decode
 		switch(opcode)
 		{
 			case 0x01:		// MOV
 				mov_instr(instruction);
-
 				break;
 
 			case 0x02:		// MUL
-
+				mul_instr(instruction);
 				break;
 
 			case 0x03:		// ADD
@@ -251,9 +246,9 @@ void gpu::rasteration(u128 VOB[], u8 FB[][SCREEN_WIDTH][3])
 					ZB[j][k] = (u8)z;
 
 					// Render baby, render
-					FB[j][k][0] = VOB[3].x; 
-					FB[j][k][1] = VOB[3].y; 
-					FB[j][k][2] = VOB[3].z; 
+					FB[j][k][0] = VOB[3].x;	// R
+					FB[j][k][1] = VOB[3].y; // G
+					FB[j][k][2] = VOB[3].z; // B
 				}
 			}
 		}
@@ -481,7 +476,7 @@ void gpu::mov_instr(u64 instr)
 	u8 srcX = get_srcN_x(instr, 0);
 
 	// mov r[], r[]
-	if ( dest == 0 && src == 0 )
+	if ( dest == TEMP_REG && src == TEMP_REG )
 	{
 		// We gotta swizzle now..
 		temp = swizzle(register_file[srcIndex], srcW, srcZ, srcY, srcX);
@@ -503,7 +498,7 @@ void gpu::mov_instr(u64 instr)
 
 	}
 	// mov r[], v[] 
-	else if ( dest == 0 && src == 1 )
+	else if ( dest == TEMP_REG && src == VERT_REG )
 	{
 		// We gotta swizzle now..
 		temp = swizzle(VAB[srcIndex], srcW, srcZ, srcY, srcX);
@@ -525,7 +520,7 @@ void gpu::mov_instr(u64 instr)
 
 	}
 	// mov r[], c[]
-	else if ( dest == 0 && src == 2 )
+	else if ( dest == TEMP_REG && src == CONST_REG )
 	{
 		// We gotta swizzle now..
 		temp = swizzle(constant_mem[srcIndex], srcW, srcZ, srcY, srcX);
@@ -546,7 +541,7 @@ void gpu::mov_instr(u64 instr)
 		if (destX) register_file[destIndex].x = temp.x;
 	}
 	// mov o[], r[]
-	else if ( dest == 1 && src == 0 )
+	else if ( dest == OUT_REG && src == TEMP_REG )
 	{
 		// We gotta swizzle now..
 		temp = swizzle(register_file[srcIndex], srcW, srcZ, srcY, srcX);
@@ -567,7 +562,7 @@ void gpu::mov_instr(u64 instr)
 		if (destX) VOB[destIndex].x = temp.x;	
 	}
 	// mov o[], v[] 
-	else if ( dest == 1 && src == 1 )
+	else if ( dest == OUT_REG && src == VERT_REG )
 	{
 		// We gotta swizzle now..
 		temp = swizzle(VAB[srcIndex], srcW, srcZ, srcY, srcX);
@@ -588,7 +583,7 @@ void gpu::mov_instr(u64 instr)
 		if (destX) VOB[destIndex].x = temp.x;
 	}
 	// mov o[], c[]
-	else if ( dest == 1 && src == 2 )
+	else if ( dest == OUT_REG && src == CONST_REG )
 	{
 		// We gotta swizzle now..
 		temp = swizzle(constant_mem[srcIndex], srcW, srcZ, srcY, srcX);
@@ -609,6 +604,301 @@ void gpu::mov_instr(u64 instr)
 		if (destX) VOB[destIndex].x = temp.x;
 	}
 
+
+}
+
+void gpu::mul_instr(u64 instr)
+{
+	u128 temp0, temp1;
+
+	// Determine destination and source paths
+	u8 dest = get_dest_type(instr);
+	u8 destIndex = get_dest_index(instr);
+	u8 destW = get_dest_w(instr);
+	u8 destZ = get_dest_z(instr);
+	u8 destY = get_dest_y(instr);
+	u8 destX = get_dest_x(instr);
+
+	u8 src0 = get_srcN_type(instr, 0);
+	u8 src0Index = get_srcN_index(instr, 0);
+	u8 src0W = get_srcN_w(instr, 0);
+	u8 src0Z = get_srcN_z(instr, 0);
+	u8 src0Y = get_srcN_y(instr, 0);
+	u8 src0X = get_srcN_x(instr, 0);
+
+	u8 src1 = get_srcN_type(instr, 1);
+	u8 src1Index = get_srcN_index(instr, 1);
+	u8 src1W = get_srcN_w(instr, 1);
+	u8 src1Z = get_srcN_z(instr, 1);
+	u8 src1Y = get_srcN_y(instr, 1);
+	u8 src1X = get_srcN_x(instr, 1);
+
+	// Output to regiser
+	// MUL r[], r[], r[]
+	if ( dest == TEMP_REG && src0 == TEMP_REG && src1 == TEMP_REG )
+	{
+		// Swizzle source 0
+		temp0 = swizzle(register_file[src0Index], src0W, src0Z, src0Y, src0X);
+
+		// Swizzle source 1
+		temp1 = swizzle(register_file[src1Index], src1W, src1Z, src1Y, src1X);
+
+		// Any negation?
+		if(get_srcN_neg(instr, 0))
+		{
+			temp0.x = -temp0.x;
+			temp0.y = -temp0.y;
+			temp0.z = -temp0.z;
+			temp0.w = -temp0.w;
+		}
+
+		if(get_srcN_neg(instr, 1))
+		{
+			temp1.x = -temp1.x;
+			temp1.y = -temp1.y;
+			temp1.z = -temp1.z;
+			temp1.w = -temp1.w;
+		}
+
+		// Finally any masks?
+		if (destW) register_file[destIndex].w = temp0.w * temp1.w;
+		if (destZ) register_file[destIndex].z = temp0.z * temp1.z;
+		if (destY) register_file[destIndex].y = temp0.y * temp1.y;
+		if (destX) register_file[destIndex].x = temp0.x * temp1.x;
+
+	}
+
+	// MUL r[], v[], r[]
+	else if ( dest == TEMP_REG && src0 == VERT_REG && src1 == TEMP_REG )
+	{
+		// Swizzle source 0
+		temp0 = swizzle(VAB[src0Index], src0W, src0Z, src0Y, src0X);
+
+		// Swizzle source 1
+		temp1 = swizzle(register_file[src1Index], src1W, src1Z, src1Y, src1X);
+
+		// Any negation?
+		if(get_srcN_neg(instr, 0))
+		{
+			temp0.x = -temp0.x;
+			temp0.y = -temp0.y;
+			temp0.z = -temp0.z;
+			temp0.w = -temp0.w;
+		}
+
+		if(get_srcN_neg(instr, 1))
+		{
+			temp1.x = -temp1.x;
+			temp1.y = -temp1.y;
+			temp1.z = -temp1.z;
+			temp1.w = -temp1.w;
+		}
+
+		// Finally any masks?
+		if (destW) register_file[destIndex].w = temp0.w * temp1.w;
+		if (destZ) register_file[destIndex].z = temp0.z * temp1.z;
+		if (destY) register_file[destIndex].y = temp0.y * temp1.y;
+		if (destX) register_file[destIndex].x = temp0.x * temp1.x;
+	}
+
+	// MUL r[], r[], v[]
+	else if ( dest == TEMP_REG && src0 == TEMP_REG && src1 == VERT_REG )
+	{
+		// Swizzle source 0
+		temp0 = swizzle(register_file[src0Index], src0W, src0Z, src0Y, src0X);
+
+		// Swizzle source 1
+		temp1 = swizzle(VAB[src1Index], src1W, src1Z, src1Y, src1X);
+
+		// Any negation?
+		if(get_srcN_neg(instr, 0))
+		{
+			temp0.x = -temp0.x;
+			temp0.y = -temp0.y;
+			temp0.z = -temp0.z;
+			temp0.w = -temp0.w;
+		}
+
+		if(get_srcN_neg(instr, 1))
+		{
+			temp1.x = -temp1.x;
+			temp1.y = -temp1.y;
+			temp1.z = -temp1.z;
+			temp1.w = -temp1.w;
+		}
+
+		// Finally any masks?
+		if (destW) register_file[destIndex].w = temp0.w * temp1.w;
+		if (destZ) register_file[destIndex].z = temp0.z * temp1.z;
+		if (destY) register_file[destIndex].y = temp0.y * temp1.y;
+		if (destX) register_file[destIndex].x = temp0.x * temp1.x;
+	}
+
+	// MUL r[], v[], v[]
+	else if ( dest == TEMP_REG && src0 == VERT_REG && src1 == VERT_REG )
+	{
+		// Swizzle source 0
+		temp0 = swizzle(VAB[src0Index], src0W, src0Z, src0Y, src0X);
+
+		// Swizzle source 1
+		temp1 = swizzle(VAB[src1Index], src1W, src1Z, src1Y, src1X);
+
+		// Any negation?
+		if(get_srcN_neg(instr, 0))
+		{
+			temp0.x = -temp0.x;
+			temp0.y = -temp0.y;
+			temp0.z = -temp0.z;
+			temp0.w = -temp0.w;
+		}
+
+		if(get_srcN_neg(instr, 1))
+		{
+			temp1.x = -temp1.x;
+			temp1.y = -temp1.y;
+			temp1.z = -temp1.z;
+			temp1.w = -temp1.w;
+		}
+
+		// Finally any masks?
+		if (destW) register_file[destIndex].w = temp0.w * temp1.w;
+		if (destZ) register_file[destIndex].z = temp0.z * temp1.z;
+		if (destY) register_file[destIndex].y = temp0.y * temp1.y;
+		if (destX) register_file[destIndex].x = temp0.x * temp1.x;
+	}
+
+	// Output to VOB
+	// MUL o[], r[], r[]
+	else if ( dest == OUT_REG && src0 == TEMP_REG && src1 == TEMP_REG )
+	{
+		// Swizzle source 0
+		temp0 = swizzle(register_file[src0Index], src0W, src0Z, src0Y, src0X);
+
+		// Swizzle source 1
+		temp1 = swizzle(register_file[src1Index], src1W, src1Z, src1Y, src1X);
+
+		// Any negation?
+		if(get_srcN_neg(instr, 0))
+		{
+			temp0.x = -temp0.x;
+			temp0.y = -temp0.y;
+			temp0.z = -temp0.z;
+			temp0.w = -temp0.w;
+		}
+
+		if(get_srcN_neg(instr, 1))
+		{
+			temp1.x = -temp1.x;
+			temp1.y = -temp1.y;
+			temp1.z = -temp1.z;
+			temp1.w = -temp1.w;
+		}
+
+		// Finally any masks?
+		if (destW) VOB[destIndex].w = temp0.w * temp1.w;
+		if (destZ) VOB[destIndex].z = temp0.z * temp1.z;
+		if (destY) VOB[destIndex].y = temp0.y * temp1.y;
+		if (destX) VOB[destIndex].x = temp0.x * temp1.x;
+	}
+
+	// MUL o[], v[], r[]
+	else if ( dest == OUT_REG && src0 == VERT_REG && src1 == TEMP_REG )
+	{
+		// Swizzle source 0
+		temp0 = swizzle(VAB[src0Index], src0W, src0Z, src0Y, src0X);
+
+		// Swizzle source 1
+		temp1 = swizzle(register_file[src1Index], src1W, src1Z, src1Y, src1X);
+
+		// Any negation?
+		if(get_srcN_neg(instr, 0))
+		{
+			temp0.x = -temp0.x;
+			temp0.y = -temp0.y;
+			temp0.z = -temp0.z;
+			temp0.w = -temp0.w;
+		}
+
+		if(get_srcN_neg(instr, 1))
+		{
+			temp1.x = -temp1.x;
+			temp1.y = -temp1.y;
+			temp1.z = -temp1.z;
+			temp1.w = -temp1.w;
+		}
+
+		// Finally any masks?
+		if (destW) VOB[destIndex].w = temp0.w * temp1.w;
+		if (destZ) VOB[destIndex].z = temp0.z * temp1.z;
+		if (destY) VOB[destIndex].y = temp0.y * temp1.y;
+		if (destX) VOB[destIndex].x = temp0.x * temp1.x;
+	}
+
+	// MUL o[], r[], v[]
+	else if ( dest == OUT_REG && src0 == TEMP_REG && src1 == VERT_REG )
+	{
+		// Swizzle source 0
+		temp0 = swizzle(register_file[src0Index], src0W, src0Z, src0Y, src0X);
+
+		// Swizzle source 1
+		temp1 = swizzle(VAB[src1Index], src1W, src1Z, src1Y, src1X);
+
+		// Any negation?
+		if(get_srcN_neg(instr, 0))
+		{
+			temp0.x = -temp0.x;
+			temp0.y = -temp0.y;
+			temp0.z = -temp0.z;
+			temp0.w = -temp0.w;
+		}
+
+		if(get_srcN_neg(instr, 1))
+		{
+			temp1.x = -temp1.x;
+			temp1.y = -temp1.y;
+			temp1.z = -temp1.z;
+			temp1.w = -temp1.w;
+		}
+
+		// Finally any masks?
+		if (destW) VOB[destIndex].w = temp0.w * temp1.w;
+		if (destZ) VOB[destIndex].z = temp0.z * temp1.z;
+		if (destY) VOB[destIndex].y = temp0.y * temp1.y;
+		if (destX) VOB[destIndex].x = temp0.x * temp1.x;
+	}
+
+	// MUL o[], v[], v[]
+	else if ( dest == OUT_REG && src0 == VERT_REG && src1 == VERT_REG )
+	{
+		// Swizzle source 0
+		temp0 = swizzle(VAB[src0Index], src0W, src0Z, src0Y, src0X);
+
+		// Swizzle source 1
+		temp1 = swizzle(VAB[src1Index], src1W, src1Z, src1Y, src1X);
+
+		// Any negation?
+		if(get_srcN_neg(instr, 0))
+		{
+			temp0.x = -temp0.x;
+			temp0.y = -temp0.y;
+			temp0.z = -temp0.z;
+			temp0.w = -temp0.w;
+		}
+
+		if(get_srcN_neg(instr, 1))
+		{
+			temp1.x = -temp1.x;
+			temp1.y = -temp1.y;
+			temp1.z = -temp1.z;
+			temp1.w = -temp1.w;
+		}
+
+		// Finally any masks?
+		if (destW) VOB[destIndex].w = temp0.w * temp1.w;
+		if (destZ) VOB[destIndex].z = temp0.z * temp1.z;
+		if (destY) VOB[destIndex].y = temp0.y * temp1.y;
+		if (destX) VOB[destIndex].x = temp0.x * temp1.x;
+	}
 
 }
 

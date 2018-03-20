@@ -10,7 +10,7 @@ using namespace std;
 class gpu
 {
 private:
-	u8 ZB[SCREEN_DEPTH];
+	u8 ZB[SCREEN_HEIGHT][SCREEN_WIDTH];
 
 	u128 register_file[12];
 	u128 constant_mem[96];
@@ -21,11 +21,11 @@ private:
 
 	// Pipeline components
 	void geometry_processor();
-	void rendering_engine();
+	void rendering_engine(u8[][SCREEN_WIDTH][3]);
 
 	// Sub pipeline methods
 	void projection (u128 *);
-	void rasteration(u128[]);
+	void rasteration(u128[], u8[][SCREEN_WIDTH][3]);
 
 	// Helper methods
 	u8 get_opcode(u64);
@@ -48,6 +48,16 @@ private:
 	void debug(u64);
 
 	u128 swizzle(u128, u8, u8, u8, u8);
+
+	int getXMin(u128[]);
+	int getXMax(u128[]);
+	int getYMin(u128[]);
+	int getYMax(u128[]);
+
+	int perpDotProduct(u128, u128, int, int);
+
+	int getZ(u128 [], int, int);
+
 
 	// Instuction execution methods
 	void mov_instr(u64);

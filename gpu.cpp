@@ -18,7 +18,7 @@ gpu::~gpu()
 void gpu::execute( u8 FB[][SCREEN_WIDTH][3] )
 {
 	geometry_processor();
-	rendering_engine();
+	rendering_engine(FB);
 }
 
 void gpu::load_const_mem()
@@ -184,28 +184,80 @@ void gpu::geometry_processor()
 	} // end of while
 }
 
-void gpu::rendering_engine()
+void gpu::rendering_engine(u8 FB[][SCREEN_WIDTH][3])
 {
 	// Here we do all the projection and other stuff..
 	projection(VOB);
-}
+	rasteration(VOB, FB);
 
-void gpu::projection(u128 *VOB)
-{
 	// cout << "VOB stuff......." << endl;
 	// cout << VOB[0].x << " " << VOB[0].y << " " << VOB[0].z << " " << VOB[0].w << " " << endl;
 	// cout << VOB[1].x << " " << VOB[1].y << " " << VOB[1].z << " " << VOB[1].w << " " << endl;
 	// cout << VOB[2].x << " " << VOB[2].y << " " << VOB[2].z << " " << VOB[2].w << " " << endl;
 	// cout << VOB[3].x << " " << VOB[3].y << " " << VOB[3].z << " " << VOB[3].w << " " << endl;
 	// cout << endl;
-
-	// Change
-	VOB[0].x = 99.99;
 }
 
-void gpu::rasteration(u128 VOB[])
+void gpu::projection(u128 *VOB)
 {
-	
+	// Project V1
+	VOB[0].x = ( ( ( VOB[0].x/4 ) + 1 ) / 2 ) * SCREEN_WIDTH;
+	VOB[0].y = ( ( ( (-VOB[0].y)/4 ) + 1 ) / 2 ) * SCREEN_HEIGHT;
+	VOB[0].z = ( ( ( VOB[0].z/4 ) + 1 ) / 2 ) * SCREEN_DEPTH;
+
+	// Project V2
+	VOB[1].x = ( ( ( VOB[1].x/4 ) + 1 ) / 2 ) * SCREEN_WIDTH;
+	VOB[1].y = ( ( ( (-VOB[1].y)/4 ) + 1 ) / 2 ) * SCREEN_HEIGHT;
+	VOB[1].z = ( ( ( VOB[1].z/4 ) + 1 ) / 2 ) * SCREEN_DEPTH;
+
+	// Project V3
+	VOB[2].x = ( ( ( VOB[2].x/4 ) + 1 ) / 2 ) * SCREEN_WIDTH;
+	VOB[2].y = ( ( ( (-VOB[2].y)/4 ) + 1 ) / 2 ) * SCREEN_HEIGHT;
+	VOB[2].z = ( ( ( VOB[2].z/4 ) + 1 ) / 2 ) * SCREEN_DEPTH;
+}
+
+void gpu::rasteration(u128 VOB[], u8 FB[][SCREEN_WIDTH][3])
+{
+	// Start rendering (≧д≦ヾ)
+	// initialize 
+	int c1, c2, c3, z;
+	int xMin, xMax, yMin, yMax;
+
+	// Get min and max from the triangle
+	xMin = getXMin(VOB);
+	xMax = getXMax(VOB);
+	yMin = getYMin(VOB);
+	yMax = getYMax(VOB);
+
+	// Going through every pixel of the frame buffer..
+	for ( int j = yMin; j < yMax; j++ )
+	{
+		for ( int k = xMin; k < xMax; k++)
+		{
+			// Calculate somethings
+			c1 = perpDotProduct(VOB[0], VOB[1], k, j);
+			c2 = perpDotProduct(VOB[1], VOB[2], k, j);
+			c3 = perpDotProduct(VOB[2], VOB[0], k, j);
+
+			// If true then pixel is in the triangle
+			if ( (c1 > 0 && c2 > 0 && c3 > 0) || (c1 < 0 && c2 < 0 && c3 < 0) )
+			{
+				// Get z
+				z = getZ(VOB, k, j);
+
+				// Write to buffer or not
+				if ( z < ZB[j][k])
+				{
+					ZB[j][k] = (u8)z;
+
+					// Render baby, render
+					FB[j][k][0] = VOB[3].x; 
+					FB[j][k][1] = VOB[3].y; 
+					FB[j][k][2] = VOB[3].z; 
+				}
+			}
+		}
+	}
 }
 
 
@@ -580,4 +632,87 @@ u128 gpu::swizzle(u128 data, u8 w, u8 z, u8 y, u8 x)
 	data.w = temp[w];
 
 	return data;
+}
+
+int gpu::getXMin(u128 v[])
+{
+	int min = v[0].x;
+
+	for (int i = 1; i < 3; i++)
+	{
+		if (v[i].x < min)
+			min = v[i].x;
+	}	
+
+	return min;
+}
+
+int gpu::getXMax(u128 v[])
+{
+	int max = v[0].x;
+
+	for (int i = 1; i < 3; i++)
+	{
+		if (v[i].x > max)
+			max = v[i].x;
+	}	
+
+	return max;
+}
+
+int gpu::getYMin(u128 v[])
+{
+	int min = v[0].y;
+
+	for (int i = 1; i < 3; i++)
+	{
+		if (v[i].y < min)
+			min = v[i].y;
+	}	
+
+	return min;
+}
+
+int gpu::getYMax(u128 v[])
+{
+	int max = v[0].y;
+
+	for (int i = 1; i < 3; i++)
+	{
+		if (v[i].y > max)
+			max = v[i].y;
+	}	
+
+	return max;
+}
+
+
+int gpu::perpDotProduct(u128 A, u128 B, int x, int y)
+{
+	return ( (x - A.x)*(B.y - A.y) ) - ( (y - A.y)*(B.x - A.x) );
+}
+
+int gpu::getZ(u128 v[], int x, int y)
+{
+	// if all z's same return one of them
+	if (v[0].z == v[1].z && v[1].z == v[2].z)
+		return v[0].z;
+
+	// if not, then do calculations
+	// plane equation
+	return
+	( -((v[0].z*( v[1].x - v[2].x )+
+		   v[1].z*( v[2].x - v[0].x )+
+		   v[2].z*( v[0].x - v[1].x)) * x +
+	
+		  (v[0].y*( v[1].z - v[2].z )+
+		   v[1].y*( v[2].z - v[0].z )+
+		   v[2].y*( v[0].z - v[1].z)) * y) /
+
+		(v[0].x*( v[1].y - v[2].y )+
+		   v[1].x*( v[2].y - v[0].y )+
+		   v[2].x*( v[0].y - v[1].y))
+
+	);
+
 }

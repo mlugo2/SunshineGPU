@@ -36,7 +36,7 @@ int main(int argc, char const *argv[])
 	vertex_shader_interface(argv[2], &vs);
 
 	// Initialize the screen
-	//std::thread t1 {thread_screen, FB};
+	std::thread t1 {thread_screen, FB};
 
 	// Instanciate gpu and load things..
 	gpu *myGPU = new gpu();
@@ -52,7 +52,7 @@ int main(int argc, char const *argv[])
 		myGPU->execute(FB);
 	}
 
-	// t1.join();
+	t1.join();
 
 	return 0;
 }

@@ -62,6 +62,21 @@ private:
 	// Instuction execution methods
 	void mov_instr(u64);
 	void mul_instr(u64);
+	void add_instr(u64);
+	void mad_instr(u64);
+	void dst_instr(u64);
+	void min_instr(u64);
+	void max_instr(u64);
+	void slt_instr(u64);
+	void sge_instr(u64);
+	void rcp_instr(u64);
+	void rsq_instr(u64);
+	void dp3_instr(u64);
+	void dp4_instr(u64);
+	void log_instr(u64);
+	void exp_instr(u64);
+	void lit_instr(u64);
+	void arl_instr(u64);
 
 public:
 	gpu();

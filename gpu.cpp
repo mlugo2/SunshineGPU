@@ -44,36 +44,36 @@ void gpu::load_vab( vector<vector<float> > v, vector<int> f)
 {
 	// Load face data into VAB
 	// Get x, y, z for first vertex
-	VAB[0].x = v[f[1]][0]; 
-	VAB[0].y = v[f[1]][1]; 
-	VAB[0].z = v[f[1]][2];
-	VAB[0].w = 1.0;
+	main_mem[VERT_REG][0].x = v[f[1]][0]; 
+	main_mem[VERT_REG][0].y = v[f[1]][1]; 
+	main_mem[VERT_REG][0].z = v[f[1]][2];
+	main_mem[VERT_REG][0].w = 1.0;
 
 	// Get position for second vertex
-	VAB[1].x = v[f[2]][0]; 
-	VAB[1].y = v[f[2]][1]; 
-	VAB[1].z = v[f[2]][2];
-	VAB[1].w = 1.0;
+	main_mem[VERT_REG][1].x = v[f[2]][0]; 
+	main_mem[VERT_REG][1].y = v[f[2]][1]; 
+	main_mem[VERT_REG][1].z = v[f[2]][2];
+	main_mem[VERT_REG][1].w = 1.0;
 
 	// Get position for thrid vertex
-	VAB[2].x = v[f[3]][0]; 
-	VAB[2].y = v[f[3]][1]; 
-	VAB[2].z = v[f[3]][2];
-	VAB[2].w = 1.0;
+	main_mem[VERT_REG][2].x = v[f[3]][0]; 
+	main_mem[VERT_REG][2].y = v[f[3]][1]; 
+	main_mem[VERT_REG][2].z = v[f[3]][2];
+	main_mem[VERT_REG][2].w = 1.0;
 
 	// Calculate initial normal
-	float V[] { VAB[1].x - VAB[0].x, VAB[1].y - VAB[0].y, VAB[1].z - VAB[0].z};
-	float W[] { VAB[2].x - VAB[0].x, VAB[2].y - VAB[0].y, VAB[2].z - VAB[0].z};
-	VAB[3].x = (V[1] * W[2]) - (V[2] * W[1]);
-	VAB[3].y = (V[2] * W[0]) - (V[0] * W[2]);
-	VAB[3].z = (V[0] * W[1]) - (V[1] * W[0]);
-	VAB[3].w = 1.0;
+	float V[] { main_mem[VERT_REG][1].x - main_mem[VERT_REG][0].x, main_mem[VERT_REG][1].y - main_mem[VERT_REG][0].y, main_mem[VERT_REG][1].z - main_mem[VERT_REG][0].z};
+	float W[] { main_mem[VERT_REG][2].x - main_mem[VERT_REG][0].x, main_mem[VERT_REG][2].y - main_mem[VERT_REG][0].y, main_mem[VERT_REG][2].z - main_mem[VERT_REG][0].z};
+	main_mem[VERT_REG][3].x = (V[1] * W[2]) - (V[2] * W[1]);
+	main_mem[VERT_REG][3].y = (V[2] * W[0]) - (V[0] * W[2]);
+	main_mem[VERT_REG][3].z = (V[0] * W[1]) - (V[1] * W[0]);
+	main_mem[VERT_REG][3].w = 1.0;
 
 	// Set default color
-	VAB[4].x = 15;
-	VAB[4].y = 90;
-	VAB[4].z = 23;
-	VAB[4].w = 1.0;
+	main_mem[VERT_REG][4].x = 15;
+	main_mem[VERT_REG][4].y = 90;
+	main_mem[VERT_REG][4].z = 23;
+	main_mem[VERT_REG][4].w = 1.0;
 
 }
 
@@ -108,7 +108,7 @@ void gpu::geometry_processor()
 				break;
 
 			case 0x02:		// MUL
-				mul_instr(instruction);
+				//mul_instr(instruction);
 				break;
 
 			case 0x03:		// ADD
@@ -268,7 +268,6 @@ u8 gpu::get_opcode(u64 instr)
 
 u8 gpu::get_dest_type(u64 instr)
 {
-	instr &= 0x100000000000000;
 	instr >>= 56;
 	return (u8)instr;
 }
@@ -475,135 +474,33 @@ void gpu::mov_instr(u64 instr)
 	u8 srcY = get_srcN_y(instr, 0);
 	u8 srcX = get_srcN_x(instr, 0);
 
-	// mov r[], r[]
-	if ( dest == TEMP_REG && src == TEMP_REG )
+	// Swizzle it
+	temp = swizzle(main_mem[src][srcIndex], srcW, srcZ, srcY, srcX);
+
+	// Negate it
+	if (get_srcN_neg(instr, 0))
 	{
-		// We gotta swizzle now..
-		temp = swizzle(register_file[srcIndex], srcW, srcZ, srcY, srcX);
-
-		// Negate?
-		if (get_srcN_neg(instr, 0))
-		{
-			temp.x = -temp.x;
-			temp.y = -temp.y;
-			temp.z = -temp.z;
-			temp.w = -temp.w;
-		}
-
-		// Finally any masks?
-		if (destW) register_file[destIndex].w = temp.w;
-		if (destZ) register_file[destIndex].z = temp.z;
-		if (destY) register_file[destIndex].y = temp.y;
-		if (destX) register_file[destIndex].x = temp.x;
-
+		temp.x = -temp.x;
+		temp.y = -temp.y;
+		temp.z = -temp.z;
+		temp.w = -temp.w;
 	}
-	// mov r[], v[] 
-	else if ( dest == TEMP_REG && src == VERT_REG )
+
+	// Bop it..
+	if ( dest == TEMP_REG )
 	{
-		// We gotta swizzle now..
-		temp = swizzle(VAB[srcIndex], srcW, srcZ, srcY, srcX);
-
-		// Negate?
-		if (get_srcN_neg(instr, 0))
-		{
-			temp.x = -temp.x;
-			temp.y = -temp.y;
-			temp.z = -temp.z;
-			temp.w = -temp.w;
-		}
-
-		// Finally any masks?
-		if (destW) register_file[destIndex].w = temp.w;
-		if (destZ) register_file[destIndex].z = temp.z;
-		if (destY) register_file[destIndex].y = temp.y;
-		if (destX) register_file[destIndex].x = temp.x;
-
+		if (destW) main_mem[dest][destIndex].w = temp.w;
+		if (destZ) main_mem[dest][destIndex].z = temp.z;
+		if (destY) main_mem[dest][destIndex].y = temp.y;
+		if (destX) main_mem[dest][destIndex].x = temp.x;
 	}
-	// mov r[], c[]
-	else if ( dest == TEMP_REG && src == CONST_REG )
+	else
 	{
-		// We gotta swizzle now..
-		temp = swizzle(constant_mem[srcIndex], srcW, srcZ, srcY, srcX);
-
-		// Negate?
-		if (get_srcN_neg(instr, 0))
-		{
-			temp.x = -temp.x;
-			temp.y = -temp.y;
-			temp.z = -temp.z;
-			temp.w = -temp.w;
-		}
-
-		// Finally any masks?
-		if (destW) register_file[destIndex].w = temp.w;
-		if (destZ) register_file[destIndex].z = temp.z;
-		if (destY) register_file[destIndex].y = temp.y;
-		if (destX) register_file[destIndex].x = temp.x;
-	}
-	// mov o[], r[]
-	else if ( dest == OUT_REG && src == TEMP_REG )
-	{
-		// We gotta swizzle now..
-		temp = swizzle(register_file[srcIndex], srcW, srcZ, srcY, srcX);
-
-		// Negate?
-		if (get_srcN_neg(instr, 0))
-		{
-			temp.x = -temp.x;
-			temp.y = -temp.y;
-			temp.z = -temp.z;
-			temp.w = -temp.w;
-		}
-
-		// Finally any masks?
-		if (destW) VOB[destIndex].w = temp.w;
-		if (destZ) VOB[destIndex].z = temp.z;
-		if (destY) VOB[destIndex].y = temp.y;
-		if (destX) VOB[destIndex].x = temp.x;	
-	}
-	// mov o[], v[] 
-	else if ( dest == OUT_REG && src == VERT_REG )
-	{
-		// We gotta swizzle now..
-		temp = swizzle(VAB[srcIndex], srcW, srcZ, srcY, srcX);
-
-		// Negate?
-		if (get_srcN_neg(instr, 0))
-		{
-			temp.x = -temp.x;
-			temp.y = -temp.y;
-			temp.z = -temp.z;
-			temp.w = -temp.w;
-		}
-
-		// Finally any masks?
 		if (destW) VOB[destIndex].w = temp.w;
 		if (destZ) VOB[destIndex].z = temp.z;
 		if (destY) VOB[destIndex].y = temp.y;
 		if (destX) VOB[destIndex].x = temp.x;
 	}
-	// mov o[], c[]
-	else if ( dest == OUT_REG && src == CONST_REG )
-	{
-		// We gotta swizzle now..
-		temp = swizzle(constant_mem[srcIndex], srcW, srcZ, srcY, srcX);
-
-		// Negate?
-		if (get_srcN_neg(instr, 0))
-		{
-			temp.x = -temp.x;
-			temp.y = -temp.y;
-			temp.z = -temp.z;
-			temp.w = -temp.w;
-		}
-
-		// Finally any masks?
-		if (destW) VOB[destIndex].w = temp.w;
-		if (destZ) VOB[destIndex].z = temp.z;
-		if (destY) VOB[destIndex].y = temp.y;
-		if (destX) VOB[destIndex].x = temp.x;
-	}
-
 
 }
 
@@ -633,267 +530,38 @@ void gpu::mul_instr(u64 instr)
 	u8 src1Y = get_srcN_y(instr, 1);
 	u8 src1X = get_srcN_x(instr, 1);
 
-	// Output to regiser
-	// MUL r[], r[], r[]
-	if ( dest == TEMP_REG && src0 == TEMP_REG && src1 == TEMP_REG )
+	// Swizzle it
+	temp0 = swizzle(main_mem[src0][src0Index], src0W, src0Z, src0Y, src0X);
+
+	temp1 = swizzle(main_mem[src1][src1Index], src1W, src1Z, src1Y, src1X);
+
+	// Negate it
+	if (get_srcN_neg(instr, 0))
 	{
-		// Swizzle source 0
-		temp0 = swizzle(register_file[src0Index], src0W, src0Z, src0Y, src0X);
-
-		// Swizzle source 1
-		temp1 = swizzle(register_file[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Any negation?
-		if(get_srcN_neg(instr, 0))
-		{
-			temp0.x = -temp0.x;
-			temp0.y = -temp0.y;
-			temp0.z = -temp0.z;
-			temp0.w = -temp0.w;
-		}
-
-		if(get_srcN_neg(instr, 1))
-		{
-			temp1.x = -temp1.x;
-			temp1.y = -temp1.y;
-			temp1.z = -temp1.z;
-			temp1.w = -temp1.w;
-		}
-
-		// Finally any masks?
-		if (destW) register_file[destIndex].w = temp0.w * temp1.w;
-		if (destZ) register_file[destIndex].z = temp0.z * temp1.z;
-		if (destY) register_file[destIndex].y = temp0.y * temp1.y;
-		if (destX) register_file[destIndex].x = temp0.x * temp1.x;
-
+		temp0.x = -temp0.x;
+		temp0.y = -temp0.y;
+		temp0.z = -temp0.z;
+		temp0.w = -temp0.w;
 	}
 
-	// MUL r[], v[], r[]
-	else if ( dest == TEMP_REG && src0 == VERT_REG && src1 == TEMP_REG )
+	if (get_srcN_neg(instr, 1))
 	{
-		// Swizzle source 0
-		temp0 = swizzle(VAB[src0Index], src0W, src0Z, src0Y, src0X);
-
-		// Swizzle source 1
-		temp1 = swizzle(register_file[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Any negation?
-		if(get_srcN_neg(instr, 0))
-		{
-			temp0.x = -temp0.x;
-			temp0.y = -temp0.y;
-			temp0.z = -temp0.z;
-			temp0.w = -temp0.w;
-		}
-
-		if(get_srcN_neg(instr, 1))
-		{
-			temp1.x = -temp1.x;
-			temp1.y = -temp1.y;
-			temp1.z = -temp1.z;
-			temp1.w = -temp1.w;
-		}
-
-		// Finally any masks?
-		if (destW) register_file[destIndex].w = temp0.w * temp1.w;
-		if (destZ) register_file[destIndex].z = temp0.z * temp1.z;
-		if (destY) register_file[destIndex].y = temp0.y * temp1.y;
-		if (destX) register_file[destIndex].x = temp0.x * temp1.x;
+		temp1.x = -temp1.x;
+		temp1.y = -temp1.y;
+		temp1.z = -temp1.z;
+		temp1.w = -temp1.w;
 	}
 
-	// MUL r[], r[], v[]
-	else if ( dest == TEMP_REG && src0 == TEMP_REG && src1 == VERT_REG )
+	// Bop it..
+	if ( dest == TEMP_REG )
 	{
-		// Swizzle source 0
-		temp0 = swizzle(register_file[src0Index], src0W, src0Z, src0Y, src0X);
-
-		// Swizzle source 1
-		temp1 = swizzle(VAB[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Any negation?
-		if(get_srcN_neg(instr, 0))
-		{
-			temp0.x = -temp0.x;
-			temp0.y = -temp0.y;
-			temp0.z = -temp0.z;
-			temp0.w = -temp0.w;
-		}
-
-		if(get_srcN_neg(instr, 1))
-		{
-			temp1.x = -temp1.x;
-			temp1.y = -temp1.y;
-			temp1.z = -temp1.z;
-			temp1.w = -temp1.w;
-		}
-
-		// Finally any masks?
-		if (destW) register_file[destIndex].w = temp0.w * temp1.w;
-		if (destZ) register_file[destIndex].z = temp0.z * temp1.z;
-		if (destY) register_file[destIndex].y = temp0.y * temp1.y;
-		if (destX) register_file[destIndex].x = temp0.x * temp1.x;
+		if (destW) main_mem[dest][destIndex].w = temp0.w * temp1.w;
+		if (destZ) main_mem[dest][destIndex].z = temp0.z * temp1.z;
+		if (destY) main_mem[dest][destIndex].y = temp0.y * temp1.y;
+		if (destX) main_mem[dest][destIndex].x = temp0.x * temp1.x;
 	}
-
-	// MUL r[], v[], v[]
-	else if ( dest == TEMP_REG && src0 == VERT_REG && src1 == VERT_REG )
+	else
 	{
-		// Swizzle source 0
-		temp0 = swizzle(VAB[src0Index], src0W, src0Z, src0Y, src0X);
-
-		// Swizzle source 1
-		temp1 = swizzle(VAB[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Any negation?
-		if(get_srcN_neg(instr, 0))
-		{
-			temp0.x = -temp0.x;
-			temp0.y = -temp0.y;
-			temp0.z = -temp0.z;
-			temp0.w = -temp0.w;
-		}
-
-		if(get_srcN_neg(instr, 1))
-		{
-			temp1.x = -temp1.x;
-			temp1.y = -temp1.y;
-			temp1.z = -temp1.z;
-			temp1.w = -temp1.w;
-		}
-
-		// Finally any masks?
-		if (destW) register_file[destIndex].w = temp0.w * temp1.w;
-		if (destZ) register_file[destIndex].z = temp0.z * temp1.z;
-		if (destY) register_file[destIndex].y = temp0.y * temp1.y;
-		if (destX) register_file[destIndex].x = temp0.x * temp1.x;
-	}
-
-	// Output to VOB
-	// MUL o[], r[], r[]
-	else if ( dest == OUT_REG && src0 == TEMP_REG && src1 == TEMP_REG )
-	{
-		// Swizzle source 0
-		temp0 = swizzle(register_file[src0Index], src0W, src0Z, src0Y, src0X);
-
-		// Swizzle source 1
-		temp1 = swizzle(register_file[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Any negation?
-		if(get_srcN_neg(instr, 0))
-		{
-			temp0.x = -temp0.x;
-			temp0.y = -temp0.y;
-			temp0.z = -temp0.z;
-			temp0.w = -temp0.w;
-		}
-
-		if(get_srcN_neg(instr, 1))
-		{
-			temp1.x = -temp1.x;
-			temp1.y = -temp1.y;
-			temp1.z = -temp1.z;
-			temp1.w = -temp1.w;
-		}
-
-		// Finally any masks?
-		if (destW) VOB[destIndex].w = temp0.w * temp1.w;
-		if (destZ) VOB[destIndex].z = temp0.z * temp1.z;
-		if (destY) VOB[destIndex].y = temp0.y * temp1.y;
-		if (destX) VOB[destIndex].x = temp0.x * temp1.x;
-	}
-
-	// MUL o[], v[], r[]
-	else if ( dest == OUT_REG && src0 == VERT_REG && src1 == TEMP_REG )
-	{
-		// Swizzle source 0
-		temp0 = swizzle(VAB[src0Index], src0W, src0Z, src0Y, src0X);
-
-		// Swizzle source 1
-		temp1 = swizzle(register_file[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Any negation?
-		if(get_srcN_neg(instr, 0))
-		{
-			temp0.x = -temp0.x;
-			temp0.y = -temp0.y;
-			temp0.z = -temp0.z;
-			temp0.w = -temp0.w;
-		}
-
-		if(get_srcN_neg(instr, 1))
-		{
-			temp1.x = -temp1.x;
-			temp1.y = -temp1.y;
-			temp1.z = -temp1.z;
-			temp1.w = -temp1.w;
-		}
-
-		// Finally any masks?
-		if (destW) VOB[destIndex].w = temp0.w * temp1.w;
-		if (destZ) VOB[destIndex].z = temp0.z * temp1.z;
-		if (destY) VOB[destIndex].y = temp0.y * temp1.y;
-		if (destX) VOB[destIndex].x = temp0.x * temp1.x;
-	}
-
-	// MUL o[], r[], v[]
-	else if ( dest == OUT_REG && src0 == TEMP_REG && src1 == VERT_REG )
-	{
-		// Swizzle source 0
-		temp0 = swizzle(register_file[src0Index], src0W, src0Z, src0Y, src0X);
-
-		// Swizzle source 1
-		temp1 = swizzle(VAB[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Any negation?
-		if(get_srcN_neg(instr, 0))
-		{
-			temp0.x = -temp0.x;
-			temp0.y = -temp0.y;
-			temp0.z = -temp0.z;
-			temp0.w = -temp0.w;
-		}
-
-		if(get_srcN_neg(instr, 1))
-		{
-			temp1.x = -temp1.x;
-			temp1.y = -temp1.y;
-			temp1.z = -temp1.z;
-			temp1.w = -temp1.w;
-		}
-
-		// Finally any masks?
-		if (destW) VOB[destIndex].w = temp0.w * temp1.w;
-		if (destZ) VOB[destIndex].z = temp0.z * temp1.z;
-		if (destY) VOB[destIndex].y = temp0.y * temp1.y;
-		if (destX) VOB[destIndex].x = temp0.x * temp1.x;
-	}
-
-	// MUL o[], v[], v[]
-	else if ( dest == OUT_REG && src0 == VERT_REG && src1 == VERT_REG )
-	{
-		// Swizzle source 0
-		temp0 = swizzle(VAB[src0Index], src0W, src0Z, src0Y, src0X);
-
-		// Swizzle source 1
-		temp1 = swizzle(VAB[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Any negation?
-		if(get_srcN_neg(instr, 0))
-		{
-			temp0.x = -temp0.x;
-			temp0.y = -temp0.y;
-			temp0.z = -temp0.z;
-			temp0.w = -temp0.w;
-		}
-
-		if(get_srcN_neg(instr, 1))
-		{
-			temp1.x = -temp1.x;
-			temp1.y = -temp1.y;
-			temp1.z = -temp1.z;
-			temp1.w = -temp1.w;
-		}
-
-		// Finally any masks?
 		if (destW) VOB[destIndex].w = temp0.w * temp1.w;
 		if (destZ) VOB[destIndex].z = temp0.z * temp1.z;
 		if (destY) VOB[destIndex].y = temp0.y * temp1.y;
@@ -928,267 +596,38 @@ void gpu::add_instr(u64 instr)
 	u8 src1Y = get_srcN_y(instr, 1);
 	u8 src1X = get_srcN_x(instr, 1);
 
-	// Output to regiser
-	// ADD r[], r[], r[]
-	if ( dest == TEMP_REG && src0 == TEMP_REG && src1 == TEMP_REG )
+	// Swizzle it
+	temp0 = swizzle(main_mem[src0][src0Index], src0W, src0Z, src0Y, src0X);
+
+	temp1 = swizzle(main_mem[src1][src1Index], src1W, src1Z, src1Y, src1X);
+
+	// Negate it
+	if (get_srcN_neg(instr, 0))
 	{
-		// Swizzle source 0
-		temp0 = swizzle(register_file[src0Index], src0W, src0Z, src0Y, src0X);
-
-		// Swizzle source 1
-		temp1 = swizzle(register_file[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Any negation?
-		if(get_srcN_neg(instr, 0))
-		{
-			temp0.x = -temp0.x;
-			temp0.y = -temp0.y;
-			temp0.z = -temp0.z;
-			temp0.w = -temp0.w;
-		}
-
-		if(get_srcN_neg(instr, 1))
-		{
-			temp1.x = -temp1.x;
-			temp1.y = -temp1.y;
-			temp1.z = -temp1.z;
-			temp1.w = -temp1.w;
-		}
-
-		// Finally any masks?
-		if (destW) register_file[destIndex].w = temp0.w * temp1.w;
-		if (destZ) register_file[destIndex].z = temp0.z * temp1.z;
-		if (destY) register_file[destIndex].y = temp0.y * temp1.y;
-		if (destX) register_file[destIndex].x = temp0.x * temp1.x;
-
+		temp0.x = -temp0.x;
+		temp0.y = -temp0.y;
+		temp0.z = -temp0.z;
+		temp0.w = -temp0.w;
 	}
 
-	// ADD r[], v[], r[]
-	else if ( dest == TEMP_REG && src0 == VERT_REG && src1 == TEMP_REG )
+	if (get_srcN_neg(instr, 1))
 	{
-		// Swizzle source 0
-		temp0 = swizzle(VAB[src0Index], src0W, src0Z, src0Y, src0X);
-
-		// Swizzle source 1
-		temp1 = swizzle(register_file[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Any negation?
-		if(get_srcN_neg(instr, 0))
-		{
-			temp0.x = -temp0.x;
-			temp0.y = -temp0.y;
-			temp0.z = -temp0.z;
-			temp0.w = -temp0.w;
-		}
-
-		if(get_srcN_neg(instr, 1))
-		{
-			temp1.x = -temp1.x;
-			temp1.y = -temp1.y;
-			temp1.z = -temp1.z;
-			temp1.w = -temp1.w;
-		}
-
-		// Finally any masks?
-		if (destW) register_file[destIndex].w = temp0.w * temp1.w;
-		if (destZ) register_file[destIndex].z = temp0.z * temp1.z;
-		if (destY) register_file[destIndex].y = temp0.y * temp1.y;
-		if (destX) register_file[destIndex].x = temp0.x * temp1.x;
+		temp1.x = -temp1.x;
+		temp1.y = -temp1.y;
+		temp1.z = -temp1.z;
+		temp1.w = -temp1.w;
 	}
 
-	// ADD r[], r[], v[]
-	else if ( dest == TEMP_REG && src0 == TEMP_REG && src1 == VERT_REG )
+	// Bop it..
+	if ( dest == TEMP_REG )
 	{
-		// Swizzle source 0
-		temp0 = swizzle(register_file[src0Index], src0W, src0Z, src0Y, src0X);
-
-		// Swizzle source 1
-		temp1 = swizzle(VAB[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Any negation?
-		if(get_srcN_neg(instr, 0))
-		{
-			temp0.x = -temp0.x;
-			temp0.y = -temp0.y;
-			temp0.z = -temp0.z;
-			temp0.w = -temp0.w;
-		}
-
-		if(get_srcN_neg(instr, 1))
-		{
-			temp1.x = -temp1.x;
-			temp1.y = -temp1.y;
-			temp1.z = -temp1.z;
-			temp1.w = -temp1.w;
-		}
-
-		// Finally any masks?
-		if (destW) register_file[destIndex].w = temp0.w * temp1.w;
-		if (destZ) register_file[destIndex].z = temp0.z * temp1.z;
-		if (destY) register_file[destIndex].y = temp0.y * temp1.y;
-		if (destX) register_file[destIndex].x = temp0.x * temp1.x;
+		if (destW) main_mem[dest][destIndex].w = temp0.w + temp1.w;
+		if (destZ) main_mem[dest][destIndex].z = temp0.z + temp1.z;
+		if (destY) main_mem[dest][destIndex].y = temp0.y + temp1.y;
+		if (destX) main_mem[dest][destIndex].x = temp0.x + temp1.x;
 	}
-
-	// ADD r[], v[], v[]
-	else if ( dest == TEMP_REG && src0 == VERT_REG && src1 == VERT_REG )
+	else
 	{
-		// Swizzle source 0
-		temp0 = swizzle(VAB[src0Index], src0W, src0Z, src0Y, src0X);
-
-		// Swizzle source 1
-		temp1 = swizzle(VAB[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Any negation?
-		if(get_srcN_neg(instr, 0))
-		{
-			temp0.x = -temp0.x;
-			temp0.y = -temp0.y;
-			temp0.z = -temp0.z;
-			temp0.w = -temp0.w;
-		}
-
-		if(get_srcN_neg(instr, 1))
-		{
-			temp1.x = -temp1.x;
-			temp1.y = -temp1.y;
-			temp1.z = -temp1.z;
-			temp1.w = -temp1.w;
-		}
-
-		// Finally any masks?
-		if (destW) register_file[destIndex].w = temp0.w * temp1.w;
-		if (destZ) register_file[destIndex].z = temp0.z * temp1.z;
-		if (destY) register_file[destIndex].y = temp0.y * temp1.y;
-		if (destX) register_file[destIndex].x = temp0.x * temp1.x;
-	}
-
-	// Output to VOB
-	// ADD o[], r[], r[]
-	else if ( dest == OUT_REG && src0 == TEMP_REG && src1 == TEMP_REG )
-	{
-		// Swizzle source 0
-		temp0 = swizzle(register_file[src0Index], src0W, src0Z, src0Y, src0X);
-
-		// Swizzle source 1
-		temp1 = swizzle(register_file[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Any negation?
-		if(get_srcN_neg(instr, 0))
-		{
-			temp0.x = -temp0.x;
-			temp0.y = -temp0.y;
-			temp0.z = -temp0.z;
-			temp0.w = -temp0.w;
-		}
-
-		if(get_srcN_neg(instr, 1))
-		{
-			temp1.x = -temp1.x;
-			temp1.y = -temp1.y;
-			temp1.z = -temp1.z;
-			temp1.w = -temp1.w;
-		}
-
-		// Finally any masks?
-		if (destW) VOB[destIndex].w = temp0.w * temp1.w;
-		if (destZ) VOB[destIndex].z = temp0.z * temp1.z;
-		if (destY) VOB[destIndex].y = temp0.y * temp1.y;
-		if (destX) VOB[destIndex].x = temp0.x * temp1.x;
-	}
-
-	// ADD o[], v[], r[]
-	else if ( dest == OUT_REG && src0 == VERT_REG && src1 == TEMP_REG )
-	{
-		// Swizzle source 0
-		temp0 = swizzle(VAB[src0Index], src0W, src0Z, src0Y, src0X);
-
-		// Swizzle source 1
-		temp1 = swizzle(register_file[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Any negation?
-		if(get_srcN_neg(instr, 0))
-		{
-			temp0.x = -temp0.x;
-			temp0.y = -temp0.y;
-			temp0.z = -temp0.z;
-			temp0.w = -temp0.w;
-		}
-
-		if(get_srcN_neg(instr, 1))
-		{
-			temp1.x = -temp1.x;
-			temp1.y = -temp1.y;
-			temp1.z = -temp1.z;
-			temp1.w = -temp1.w;
-		}
-
-		// Finally any masks?
-		if (destW) VOB[destIndex].w = temp0.w * temp1.w;
-		if (destZ) VOB[destIndex].z = temp0.z * temp1.z;
-		if (destY) VOB[destIndex].y = temp0.y * temp1.y;
-		if (destX) VOB[destIndex].x = temp0.x * temp1.x;
-	}
-
-	// ADD o[], r[], v[]
-	else if ( dest == OUT_REG && src0 == TEMP_REG && src1 == VERT_REG )
-	{
-		// Swizzle source 0
-		temp0 = swizzle(register_file[src0Index], src0W, src0Z, src0Y, src0X);
-
-		// Swizzle source 1
-		temp1 = swizzle(VAB[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Any negation?
-		if(get_srcN_neg(instr, 0))
-		{
-			temp0.x = -temp0.x;
-			temp0.y = -temp0.y;
-			temp0.z = -temp0.z;
-			temp0.w = -temp0.w;
-		}
-
-		if(get_srcN_neg(instr, 1))
-		{
-			temp1.x = -temp1.x;
-			temp1.y = -temp1.y;
-			temp1.z = -temp1.z;
-			temp1.w = -temp1.w;
-		}
-
-		// Finally any masks?
-		if (destW) VOB[destIndex].w = temp0.w * temp1.w;
-		if (destZ) VOB[destIndex].z = temp0.z * temp1.z;
-		if (destY) VOB[destIndex].y = temp0.y * temp1.y;
-		if (destX) VOB[destIndex].x = temp0.x * temp1.x;
-	}
-
-	// ADD o[], v[], v[]
-	else if ( dest == OUT_REG && src0 == VERT_REG && src1 == VERT_REG )
-	{
-		// Swizzle source 0
-		temp0 = swizzle(VAB[src0Index], src0W, src0Z, src0Y, src0X);
-
-		// Swizzle source 1
-		temp1 = swizzle(VAB[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Any negation?
-		if(get_srcN_neg(instr, 0))
-		{
-			temp0.x = -temp0.x;
-			temp0.y = -temp0.y;
-			temp0.z = -temp0.z;
-			temp0.w = -temp0.w;
-		}
-
-		if(get_srcN_neg(instr, 1))
-		{
-			temp1.x = -temp1.x;
-			temp1.y = -temp1.y;
-			temp1.z = -temp1.z;
-			temp1.w = -temp1.w;
-		}
-
-		// Finally any masks?
 		if (destW) VOB[destIndex].w = temp0.w + temp1.w;
 		if (destZ) VOB[destIndex].z = temp0.z + temp1.z;
 		if (destY) VOB[destIndex].y = temp0.y + temp1.y;
@@ -1229,701 +668,55 @@ void gpu::mad_instr(u64 instr)
 	u8 src2Y = get_srcN_y(instr, 2);
 	u8 src2X = get_srcN_x(instr, 2);
 
-	// Now for a combinatorial explosion
+	// Swizzle it
+	temp0 = swizzle(main_mem[src0][src0Index], src0W, src0Z, src0Y, src0X);
 
-	// Output to temp registers
-	// MAD r[], r[], r[], r[]
-	if ( dest == TEMP_REG && src0 == TEMP_REG && src1 == TEMP_REG && src2 == TEMP_REG)
+	temp1 = swizzle(main_mem[src1][src1Index], src1W, src1Z, src1Y, src1X);
+
+	temp2 = swizzle(main_mem[src2][src2Index], src2W, src2Z, src2Y, src2X);
+
+	// Negate it
+	if (get_srcN_neg(instr, 0))
 	{
-		// Swizzle source 0
-		temp0 = swizzle(register_file[src0Index], src0W, src0Z, src0Y, src0X);
-
-		// Swizzle source 1
-		temp1 = swizzle(register_file[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Swizzle source 2
-		temp2 = swizzle(register_file[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Any negation?
-		if(get_srcN_neg(instr, 0))
-		{
-			temp0.x = -temp0.x;
-			temp0.y = -temp0.y;
-			temp0.z = -temp0.z;
-			temp0.w = -temp0.w;
-		}
-
-		if(get_srcN_neg(instr, 1))
-		{
-			temp1.x = -temp1.x;
-			temp1.y = -temp1.y;
-			temp1.z = -temp1.z;
-			temp1.w = -temp1.w;
-		}
-
-		if(get_srcN_neg(instr, 2))
-		{
-			temp2.x = -temp2.x;
-			temp2.y = -temp2.y;
-			temp2.z = -temp2.z;
-			temp2.w = -temp2.w;
-		}
-
-		// Finally any masks?
-		if (destW) register_file[destIndex].w = temp0.w * temp1.w + temp2.w;
-		if (destZ) register_file[destIndex].z = temp0.z * temp1.z + temp2.z;
-		if (destY) register_file[destIndex].y = temp0.y * temp1.y + temp2.y;
-		if (destX) register_file[destIndex].x = temp0.x * temp1.x + temp2.x;
-	}
-	// MAD r[], r[], r[], v[]
-	else if ( dest == TEMP_REG && src0 == TEMP_REG && src1 == TEMP_REG && src2 == VERT_REG)
-	{
-		// Swizzle source 0
-		temp0 = swizzle(register_file[src0Index], src0W, src0Z, src0Y, src0X);
-
-		// Swizzle source 1
-		temp1 = swizzle(register_file[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Swizzle source 2
-		temp2 = swizzle(VAB[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Any negation?
-		if(get_srcN_neg(instr, 0))
-		{
-			temp0.x = -temp0.x;
-			temp0.y = -temp0.y;
-			temp0.z = -temp0.z;
-			temp0.w = -temp0.w;
-		}
-
-		if(get_srcN_neg(instr, 1))
-		{
-			temp1.x = -temp1.x;
-			temp1.y = -temp1.y;
-			temp1.z = -temp1.z;
-			temp1.w = -temp1.w;
-		}
-
-		if(get_srcN_neg(instr, 2))
-		{
-			temp2.x = -temp2.x;
-			temp2.y = -temp2.y;
-			temp2.z = -temp2.z;
-			temp2.w = -temp2.w;
-		}
-
-		// Finally any masks?
-		if (destW) register_file[destIndex].w = temp0.w * temp1.w + temp2.w;
-		if (destZ) register_file[destIndex].z = temp0.z * temp1.z + temp2.z;
-		if (destY) register_file[destIndex].y = temp0.y * temp1.y + temp2.y;
-		if (destX) register_file[destIndex].x = temp0.x * temp1.x + temp2.x;
-	}
-	// MAD r[], r[], v[], r[]
-	else if ( dest == TEMP_REG && src0 == TEMP_REG && src1 == VERT_REG && src2 == TEMP_REG)
-	{
-		// Swizzle source 0
-		temp0 = swizzle(register_file[src0Index], src0W, src0Z, src0Y, src0X);
-
-		// Swizzle source 1
-		temp1 = swizzle(VAB[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Swizzle source 2
-		temp2 = swizzle(register_file[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Any negation?
-		if(get_srcN_neg(instr, 0))
-		{
-			temp0.x = -temp0.x;
-			temp0.y = -temp0.y;
-			temp0.z = -temp0.z;
-			temp0.w = -temp0.w;
-		}
-
-		if(get_srcN_neg(instr, 1))
-		{
-			temp1.x = -temp1.x;
-			temp1.y = -temp1.y;
-			temp1.z = -temp1.z;
-			temp1.w = -temp1.w;
-		}
-
-		if(get_srcN_neg(instr, 2))
-		{
-			temp2.x = -temp2.x;
-			temp2.y = -temp2.y;
-			temp2.z = -temp2.z;
-			temp2.w = -temp2.w;
-		}
-
-		// Finally any masks?
-		if (destW) register_file[destIndex].w = temp0.w * temp1.w + temp2.w;
-		if (destZ) register_file[destIndex].z = temp0.z * temp1.z + temp2.z;
-		if (destY) register_file[destIndex].y = temp0.y * temp1.y + temp2.y;
-		if (destX) register_file[destIndex].x = temp0.x * temp1.x + temp2.x;
-	}
-	// MAD r[], r[], v[], v[]
-	else if ( dest == TEMP_REG && src0 == TEMP_REG && src1 == VERT_REG && src2 == VERT_REG)
-	{
-		// Swizzle source 0
-		temp0 = swizzle(register_file[src0Index], src0W, src0Z, src0Y, src0X);
-
-		// Swizzle source 1
-		temp1 = swizzle(VAB[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Swizzle source 2
-		temp2 = swizzle(VAB[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Any negation?
-		if(get_srcN_neg(instr, 0))
-		{
-			temp0.x = -temp0.x;
-			temp0.y = -temp0.y;
-			temp0.z = -temp0.z;
-			temp0.w = -temp0.w;
-		}
-
-		if(get_srcN_neg(instr, 1))
-		{
-			temp1.x = -temp1.x;
-			temp1.y = -temp1.y;
-			temp1.z = -temp1.z;
-			temp1.w = -temp1.w;
-		}
-
-		if(get_srcN_neg(instr, 2))
-		{
-			temp2.x = -temp2.x;
-			temp2.y = -temp2.y;
-			temp2.z = -temp2.z;
-			temp2.w = -temp2.w;
-		}
-
-		// Finally any masks?
-		if (destW) register_file[destIndex].w = temp0.w * temp1.w + temp2.w;
-		if (destZ) register_file[destIndex].z = temp0.z * temp1.z + temp2.z;
-		if (destY) register_file[destIndex].y = temp0.y * temp1.y + temp2.y;
-		if (destX) register_file[destIndex].x = temp0.x * temp1.x + temp2.x;
-	}
-	// MAD r[], v[], r[], r[]
-	else if ( dest == TEMP_REG && src0 == VERT_REG && src1 == TEMP_REG && src2 == TEMP_REG)
-	{
-		// Swizzle source 0
-		temp0 = swizzle(VAB[src0Index], src0W, src0Z, src0Y, src0X);
-
-		// Swizzle source 1
-		temp1 = swizzle(register_file[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Swizzle source 2
-		temp2 = swizzle(register_file[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Any negation?
-		if(get_srcN_neg(instr, 0))
-		{
-			temp0.x = -temp0.x;
-			temp0.y = -temp0.y;
-			temp0.z = -temp0.z;
-			temp0.w = -temp0.w;
-		}
-
-		if(get_srcN_neg(instr, 1))
-		{
-			temp1.x = -temp1.x;
-			temp1.y = -temp1.y;
-			temp1.z = -temp1.z;
-			temp1.w = -temp1.w;
-		}
-
-		if(get_srcN_neg(instr, 2))
-		{
-			temp2.x = -temp2.x;
-			temp2.y = -temp2.y;
-			temp2.z = -temp2.z;
-			temp2.w = -temp2.w;
-		}
-
-		// Finally any masks?
-		if (destW) register_file[destIndex].w = temp0.w * temp1.w + temp2.w;
-		if (destZ) register_file[destIndex].z = temp0.z * temp1.z + temp2.z;
-		if (destY) register_file[destIndex].y = temp0.y * temp1.y + temp2.y;
-		if (destX) register_file[destIndex].x = temp0.x * temp1.x + temp2.x;
-	}
-	// MAD r[], v[], r[], v[]
-	else if ( dest == TEMP_REG && src0 == VERT_REG && src1 == TEMP_REG && src2 == VERT_REG)
-	{
-		// Swizzle source 0
-		temp0 = swizzle(VAB[src0Index], src0W, src0Z, src0Y, src0X);
-
-		// Swizzle source 1
-		temp1 = swizzle(register_file[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Swizzle source 2
-		temp2 = swizzle(VAB[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Any negation?
-		if(get_srcN_neg(instr, 0))
-		{
-			temp0.x = -temp0.x;
-			temp0.y = -temp0.y;
-			temp0.z = -temp0.z;
-			temp0.w = -temp0.w;
-		}
-
-		if(get_srcN_neg(instr, 1))
-		{
-			temp1.x = -temp1.x;
-			temp1.y = -temp1.y;
-			temp1.z = -temp1.z;
-			temp1.w = -temp1.w;
-		}
-
-		if(get_srcN_neg(instr, 2))
-		{
-			temp2.x = -temp2.x;
-			temp2.y = -temp2.y;
-			temp2.z = -temp2.z;
-			temp2.w = -temp2.w;
-		}
-
-		// Finally any masks?
-		if (destW) register_file[destIndex].w = temp0.w * temp1.w + temp2.w;
-		if (destZ) register_file[destIndex].z = temp0.z * temp1.z + temp2.z;
-		if (destY) register_file[destIndex].y = temp0.y * temp1.y + temp2.y;
-		if (destX) register_file[destIndex].x = temp0.x * temp1.x + temp2.x;
-	}
-	// MAD r[], v[], v[], r[]
-	else if ( dest == TEMP_REG && src0 == VERT_REG && src1 == VERT_REG && src2 == TEMP_REG)
-	{
-		// Swizzle source 0
-		temp0 = swizzle(VAB[src0Index], src0W, src0Z, src0Y, src0X);
-
-		// Swizzle source 1
-		temp1 = swizzle(VAB[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Swizzle source 2
-		temp2 = swizzle(register_file[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Any negation?
-		if(get_srcN_neg(instr, 0))
-		{
-			temp0.x = -temp0.x;
-			temp0.y = -temp0.y;
-			temp0.z = -temp0.z;
-			temp0.w = -temp0.w;
-		}
-
-		if(get_srcN_neg(instr, 1))
-		{
-			temp1.x = -temp1.x;
-			temp1.y = -temp1.y;
-			temp1.z = -temp1.z;
-			temp1.w = -temp1.w;
-		}
-
-		if(get_srcN_neg(instr, 2))
-		{
-			temp2.x = -temp2.x;
-			temp2.y = -temp2.y;
-			temp2.z = -temp2.z;
-			temp2.w = -temp2.w;
-		}
-
-		// Finally any masks?
-		if (destW) register_file[destIndex].w = temp0.w * temp1.w + temp2.w;
-		if (destZ) register_file[destIndex].z = temp0.z * temp1.z + temp2.z;
-		if (destY) register_file[destIndex].y = temp0.y * temp1.y + temp2.y;
-		if (destX) register_file[destIndex].x = temp0.x * temp1.x + temp2.x;
-	}
-	// MAD r[], v[], v[], v[]
-	else if ( dest == TEMP_REG && src0 == VERT_REG && src1 == VERT_REG && src2 == VERT_REG)
-	{
-		// Swizzle source 0
-		temp0 = swizzle(VAB[src0Index], src0W, src0Z, src0Y, src0X);
-
-		// Swizzle source 1
-		temp1 = swizzle(VAB[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Swizzle source 2
-		temp2 = swizzle(VAB[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Any negation?
-		if(get_srcN_neg(instr, 0))
-		{
-			temp0.x = -temp0.x;
-			temp0.y = -temp0.y;
-			temp0.z = -temp0.z;
-			temp0.w = -temp0.w;
-		}
-
-		if(get_srcN_neg(instr, 1))
-		{
-			temp1.x = -temp1.x;
-			temp1.y = -temp1.y;
-			temp1.z = -temp1.z;
-			temp1.w = -temp1.w;
-		}
-
-		if(get_srcN_neg(instr, 2))
-		{
-			temp2.x = -temp2.x;
-			temp2.y = -temp2.y;
-			temp2.z = -temp2.z;
-			temp2.w = -temp2.w;
-		}
-
-		// Finally any masks?
-		if (destW) register_file[destIndex].w = temp0.w * temp1.w + temp2.w;
-		if (destZ) register_file[destIndex].z = temp0.z * temp1.z + temp2.z;
-		if (destY) register_file[destIndex].y = temp0.y * temp1.y + temp2.y;
-		if (destX) register_file[destIndex].x = temp0.x * temp1.x + temp2.x;
+		temp0.x = -temp0.x;
+		temp0.y = -temp0.y;
+		temp0.z = -temp0.z;
+		temp0.w = -temp0.w;
 	}
 
-	//////////////////////////////////////////////////////////////////
-	////////////////////////////////////////////////////////////////////////////////
-
-	// MAD o[], r[], r[], r[]
-	else if ( dest == TEMP_REG && src0 == TEMP_REG && src1 == TEMP_REG && src2 == TEMP_REG)
+	if (get_srcN_neg(instr, 1))
 	{
-		// Swizzle source 0
-		temp0 = swizzle(register_file[src0Index], src0W, src0Z, src0Y, src0X);
+		temp1.x = -temp1.x;
+		temp1.y = -temp1.y;
+		temp1.z = -temp1.z;
+		temp1.w = -temp1.w;
+	}
 
-		// Swizzle source 1
-		temp1 = swizzle(register_file[src1Index], src1W, src1Z, src1Y, src1X);
+	if (get_srcN_neg(instr, 2))
+	{
+		temp2.x = -temp2.x;
+		temp2.y = -temp2.y;
+		temp2.z = -temp2.z;
+		temp2.w = -temp2.w;
+	}
 
-		// Swizzle source 2
-		temp2 = swizzle(register_file[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Any negation?
-		if(get_srcN_neg(instr, 0))
-		{
-			temp0.x = -temp0.x;
-			temp0.y = -temp0.y;
-			temp0.z = -temp0.z;
-			temp0.w = -temp0.w;
-		}
-
-		if(get_srcN_neg(instr, 1))
-		{
-			temp1.x = -temp1.x;
-			temp1.y = -temp1.y;
-			temp1.z = -temp1.z;
-			temp1.w = -temp1.w;
-		}
-
-		if(get_srcN_neg(instr, 2))
-		{
-			temp2.x = -temp2.x;
-			temp2.y = -temp2.y;
-			temp2.z = -temp2.z;
-			temp2.w = -temp2.w;
-		}
-
-		// Finally any masks?
+	// Bop it..
+	if ( dest == TEMP_REG )
+	{
+		if (destW) main_mem[dest][destIndex].w = temp0.w * temp1.w + temp2.w;
+		if (destZ) main_mem[dest][destIndex].z = temp0.z * temp1.z + temp2.z;
+		if (destY) main_mem[dest][destIndex].y = temp0.y * temp1.y + temp2.y;
+		if (destX) main_mem[dest][destIndex].x = temp0.x * temp1.x + temp2.x;
+	}
+	else
+	{
 		if (destW) VOB[destIndex].w = temp0.w * temp1.w + temp2.w;
 		if (destZ) VOB[destIndex].z = temp0.z * temp1.z + temp2.z;
 		if (destY) VOB[destIndex].y = temp0.y * temp1.y + temp2.y;
 		if (destX) VOB[destIndex].x = temp0.x * temp1.x + temp2.x;
 	}
-	// MAD o[], r[], r[], v[]
-	else if ( dest == TEMP_REG && src0 == TEMP_REG && src1 == TEMP_REG && src2 == VERT_REG)
-	{
-		// Swizzle source 0
-		temp0 = swizzle(register_file[src0Index], src0W, src0Z, src0Y, src0X);
 
-		// Swizzle source 1
-		temp1 = swizzle(register_file[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Swizzle source 2
-		temp2 = swizzle(VAB[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Any negation?
-		if(get_srcN_neg(instr, 0))
-		{
-			temp0.x = -temp0.x;
-			temp0.y = -temp0.y;
-			temp0.z = -temp0.z;
-			temp0.w = -temp0.w;
-		}
-
-		if(get_srcN_neg(instr, 1))
-		{
-			temp1.x = -temp1.x;
-			temp1.y = -temp1.y;
-			temp1.z = -temp1.z;
-			temp1.w = -temp1.w;
-		}
-
-		if(get_srcN_neg(instr, 2))
-		{
-			temp2.x = -temp2.x;
-			temp2.y = -temp2.y;
-			temp2.z = -temp2.z;
-			temp2.w = -temp2.w;
-		}
-
-		// Finally any masks?
-		if (destW) VOB[destIndex].w = temp0.w * temp1.w + temp2.w;
-		if (destZ) VOB[destIndex].z = temp0.z * temp1.z + temp2.z;
-		if (destY) VOB[destIndex].y = temp0.y * temp1.y + temp2.y;
-		if (destX) VOB[destIndex].x = temp0.x * temp1.x + temp2.x;
-	}
-	// MAD o[], r[], v[], r[]
-	else if ( dest == TEMP_REG && src0 == TEMP_REG && src1 == VERT_REG && src2 == TEMP_REG)
-	{
-		// Swizzle source 0
-		temp0 = swizzle(register_file[src0Index], src0W, src0Z, src0Y, src0X);
-
-		// Swizzle source 1
-		temp1 = swizzle(VAB[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Swizzle source 2
-		temp2 = swizzle(register_file[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Any negation?
-		if(get_srcN_neg(instr, 0))
-		{
-			temp0.x = -temp0.x;
-			temp0.y = -temp0.y;
-			temp0.z = -temp0.z;
-			temp0.w = -temp0.w;
-		}
-
-		if(get_srcN_neg(instr, 1))
-		{
-			temp1.x = -temp1.x;
-			temp1.y = -temp1.y;
-			temp1.z = -temp1.z;
-			temp1.w = -temp1.w;
-		}
-
-		if(get_srcN_neg(instr, 2))
-		{
-			temp2.x = -temp2.x;
-			temp2.y = -temp2.y;
-			temp2.z = -temp2.z;
-			temp2.w = -temp2.w;
-		}
-
-		// Finally any masks?
-		if (destW) VOB[destIndex].w = temp0.w * temp1.w + temp2.w;
-		if (destZ) VOB[destIndex].z = temp0.z * temp1.z + temp2.z;
-		if (destY) VOB[destIndex].y = temp0.y * temp1.y + temp2.y;
-		if (destX) VOB[destIndex].x = temp0.x * temp1.x + temp2.x;
-	}
-	// MAD o[], r[], v[], v[]
-	else if ( dest == TEMP_REG && src0 == TEMP_REG && src1 == VERT_REG && src2 == VERT_REG)
-	{
-		// Swizzle source 0
-		temp0 = swizzle(register_file[src0Index], src0W, src0Z, src0Y, src0X);
-
-		// Swizzle source 1
-		temp1 = swizzle(VAB[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Swizzle source 2
-		temp2 = swizzle(VAB[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Any negation?
-		if(get_srcN_neg(instr, 0))
-		{
-			temp0.x = -temp0.x;
-			temp0.y = -temp0.y;
-			temp0.z = -temp0.z;
-			temp0.w = -temp0.w;
-		}
-
-		if(get_srcN_neg(instr, 1))
-		{
-			temp1.x = -temp1.x;
-			temp1.y = -temp1.y;
-			temp1.z = -temp1.z;
-			temp1.w = -temp1.w;
-		}
-
-		if(get_srcN_neg(instr, 2))
-		{
-			temp2.x = -temp2.x;
-			temp2.y = -temp2.y;
-			temp2.z = -temp2.z;
-			temp2.w = -temp2.w;
-		}
-
-		// Finally any masks?
-		if (destW) VOB[destIndex].w = temp0.w * temp1.w + temp2.w;
-		if (destZ) VOB[destIndex].z = temp0.z * temp1.z + temp2.z;
-		if (destY) VOB[destIndex].y = temp0.y * temp1.y + temp2.y;
-		if (destX) VOB[destIndex].x = temp0.x * temp1.x + temp2.x;
-	}
-	// MAD o[], v[], r[], r[]
-	else if ( dest == TEMP_REG && src0 == VERT_REG && src1 == TEMP_REG && src2 == TEMP_REG)
-	{
-		// Swizzle source 0
-		temp0 = swizzle(VAB[src0Index], src0W, src0Z, src0Y, src0X);
-
-		// Swizzle source 1
-		temp1 = swizzle(register_file[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Swizzle source 2
-		temp2 = swizzle(register_file[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Any negation?
-		if(get_srcN_neg(instr, 0))
-		{
-			temp0.x = -temp0.x;
-			temp0.y = -temp0.y;
-			temp0.z = -temp0.z;
-			temp0.w = -temp0.w;
-		}
-
-		if(get_srcN_neg(instr, 1))
-		{
-			temp1.x = -temp1.x;
-			temp1.y = -temp1.y;
-			temp1.z = -temp1.z;
-			temp1.w = -temp1.w;
-		}
-
-		if(get_srcN_neg(instr, 2))
-		{
-			temp2.x = -temp2.x;
-			temp2.y = -temp2.y;
-			temp2.z = -temp2.z;
-			temp2.w = -temp2.w;
-		}
-
-		// Finally any masks?
-		if (destW) VOB[destIndex].w = temp0.w * temp1.w + temp2.w;
-		if (destZ) VOB[destIndex].z = temp0.z * temp1.z + temp2.z;
-		if (destY) VOB[destIndex].y = temp0.y * temp1.y + temp2.y;
-		if (destX) VOB[destIndex].x = temp0.x * temp1.x + temp2.x;
-	}
-	// MAD o[], v[], r[], v[]
-	else if ( dest == TEMP_REG && src0 == VERT_REG && src1 == TEMP_REG && src2 == VERT_REG)
-	{
-		// Swizzle source 0
-		temp0 = swizzle(VAB[src0Index], src0W, src0Z, src0Y, src0X);
-
-		// Swizzle source 1
-		temp1 = swizzle(register_file[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Swizzle source 2
-		temp2 = swizzle(VAB[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Any negation?
-		if(get_srcN_neg(instr, 0))
-		{
-			temp0.x = -temp0.x;
-			temp0.y = -temp0.y;
-			temp0.z = -temp0.z;
-			temp0.w = -temp0.w;
-		}
-
-		if(get_srcN_neg(instr, 1))
-		{
-			temp1.x = -temp1.x;
-			temp1.y = -temp1.y;
-			temp1.z = -temp1.z;
-			temp1.w = -temp1.w;
-		}
-
-		if(get_srcN_neg(instr, 2))
-		{
-			temp2.x = -temp2.x;
-			temp2.y = -temp2.y;
-			temp2.z = -temp2.z;
-			temp2.w = -temp2.w;
-		}
-
-		// Finally any masks?
-		if (destW) VOB[destIndex].w = temp0.w * temp1.w + temp2.w;
-		if (destZ) VOB[destIndex].z = temp0.z * temp1.z + temp2.z;
-		if (destY) VOB[destIndex].y = temp0.y * temp1.y + temp2.y;
-		if (destX) VOB[destIndex].x = temp0.x * temp1.x + temp2.x;
-	}
-	// MAD o[], v[], v[], r[]
-	else if ( dest == TEMP_REG && src0 == VERT_REG && src1 == VERT_REG && src2 == TEMP_REG)
-	{
-		// Swizzle source 0
-		temp0 = swizzle(VAB[src0Index], src0W, src0Z, src0Y, src0X);
-
-		// Swizzle source 1
-		temp1 = swizzle(VAB[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Swizzle source 2
-		temp2 = swizzle(register_file[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Any negation?
-		if(get_srcN_neg(instr, 0))
-		{
-			temp0.x = -temp0.x;
-			temp0.y = -temp0.y;
-			temp0.z = -temp0.z;
-			temp0.w = -temp0.w;
-		}
-
-		if(get_srcN_neg(instr, 1))
-		{
-			temp1.x = -temp1.x;
-			temp1.y = -temp1.y;
-			temp1.z = -temp1.z;
-			temp1.w = -temp1.w;
-		}
-
-		if(get_srcN_neg(instr, 2))
-		{
-			temp2.x = -temp2.x;
-			temp2.y = -temp2.y;
-			temp2.z = -temp2.z;
-			temp2.w = -temp2.w;
-		}
-
-		// Finally any masks?
-		if (destW) VOB[destIndex].w = temp0.w * temp1.w + temp2.w;
-		if (destZ) VOB[destIndex].z = temp0.z * temp1.z + temp2.z;
-		if (destY) VOB[destIndex].y = temp0.y * temp1.y + temp2.y;
-		if (destX) VOB[destIndex].x = temp0.x * temp1.x + temp2.x;
-	}
-	// MAD o[], v[], v[], v[]
-	else if ( dest == TEMP_REG && src0 == VERT_REG && src1 == VERT_REG && src2 == VERT_REG)
-	{
-		// Swizzle source 0
-		temp0 = swizzle(VAB[src0Index], src0W, src0Z, src0Y, src0X);
-
-		// Swizzle source 1
-		temp1 = swizzle(VAB[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Swizzle source 2
-		temp2 = swizzle(VAB[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Any negation?
-		if(get_srcN_neg(instr, 0))
-		{
-			temp0.x = -temp0.x;
-			temp0.y = -temp0.y;
-			temp0.z = -temp0.z;
-			temp0.w = -temp0.w;
-		}
-
-		if(get_srcN_neg(instr, 1))
-		{
-			temp1.x = -temp1.x;
-			temp1.y = -temp1.y;
-			temp1.z = -temp1.z;
-			temp1.w = -temp1.w;
-		}
-
-		if(get_srcN_neg(instr, 2))
-		{
-			temp2.x = -temp2.x;
-			temp2.y = -temp2.y;
-			temp2.z = -temp2.z;
-			temp2.w = -temp2.w;
-		}
-
-		// Finally any masks?
-		if (destW) VOB[destIndex].w = temp0.w * temp1.w + temp2.w;
-		if (destZ) VOB[destIndex].z = temp0.z * temp1.z + temp2.z;
-		if (destY) VOB[destIndex].y = temp0.y * temp1.y + temp2.y;
-		if (destX) VOB[destIndex].x = temp0.x * temp1.x + temp2.x;
-	}
+	
 
 }
 
@@ -1953,240 +746,39 @@ void gpu::dst_instr(u64 instr)
 	u8 src1Y = get_srcN_y(instr, 1);
 	u8 src1X = get_srcN_x(instr, 1);
 
+	// Swizzle it
+	temp0 = swizzle(main_mem[src0][src0Index], src0W, src0Z, src0Y, src0X);
 
-	// DST r[], r[], r[]
-	if ( dest == TEMP_REG && src0 == TEMP_REG && src1 == TEMP_REG )
+	temp1 = swizzle(main_mem[src1][src1Index], src1W, src1Z, src1Y, src1X);
+
+	// Negate it
+	if (get_srcN_neg(instr, 0))
 	{
-		// Swizzle source 0
-		temp0 = swizzle(register_file[src0Index], src0W, src0Z, src0Y, src0X);
-
-		// Swizzle source 1
-		temp1 = swizzle(register_file[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Any negation?
-		if(get_srcN_neg(instr, 0))
-		{
-			temp0.y = -temp0.y;
-			temp0.z = -temp0.z;
-		}
-
-		if(get_srcN_neg(instr, 1))
-		{
-			temp1.y = -temp1.y;
-			temp1.w = -temp1.w;
-		}
-
-		// Finally any masks?
-		if (destW) register_file[destIndex].w = temp1.w;
-		if (destZ) register_file[destIndex].z = temp0.z;
-		if (destY) register_file[destIndex].y = temp0.y * temp1.y;
-		if (destX) register_file[destIndex].x = 1.0;
-
+		temp0.y = -temp0.y;
+		temp0.z = -temp0.z;
 	}
 
-	// DST r[], v[], r[]
-	else if ( dest == TEMP_REG && src0 == VERT_REG && src1 == TEMP_REG )
+	if (get_srcN_neg(instr, 1))
 	{
-		// Swizzle source 0
-		temp0 = swizzle(VAB[src0Index], src0W, src0Z, src0Y, src0X);
-
-		// Swizzle source 1
-		temp1 = swizzle(register_file[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Any negation?
-		if(get_srcN_neg(instr, 0))
-		{
-			temp0.y = -temp0.y;
-			temp0.z = -temp0.z;
-		}
-
-		if(get_srcN_neg(instr, 1))
-		{
-			temp1.y = -temp1.y;
-			temp1.w = -temp1.w;
-		}
-
-		// Finally any masks?
-		if (destW) register_file[destIndex].w = temp1.w;
-		if (destZ) register_file[destIndex].z = temp0.z;
-		if (destY) register_file[destIndex].y = temp0.y * temp1.y;
-		if (destX) register_file[destIndex].x = 1.0;
+		temp1.y = -temp1.y;
+		temp1.w = -temp1.w;
 	}
 
-	// DST r[], r[], v[]
-	else if ( dest == TEMP_REG && src0 == TEMP_REG && src1 == VERT_REG )
+	// Bop it..
+	if ( dest == TEMP_REG )
 	{
-		// Swizzle source 0
-		temp0 = swizzle(register_file[src0Index], src0W, src0Z, src0Y, src0X);
-
-		// Swizzle source 1
-		temp1 = swizzle(VAB[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Any negation?
-		if(get_srcN_neg(instr, 0))
-		{
-			temp0.y = -temp0.y;
-			temp0.z = -temp0.z;
-		}
-
-		if(get_srcN_neg(instr, 1))
-		{
-			temp1.y = -temp1.y;
-			temp1.w = -temp1.w;
-		}
-
-		// Finally any masks?
-		if (destW) register_file[destIndex].w = temp1.w;
-		if (destZ) register_file[destIndex].z = temp0.z;
-		if (destY) register_file[destIndex].y = temp0.y * temp1.y;
-		if (destX) register_file[destIndex].x = 1.0;
+		if (destW) main_mem[dest][destIndex].w = temp1.w;
+		if (destZ) main_mem[dest][destIndex].z = temp0.z;
+		if (destY) main_mem[dest][destIndex].y = temp0.y * temp1.y;
+		if (destX) main_mem[dest][destIndex].x = 1.0;
 	}
-
-	// DST r[], v[], v[]
-	else if ( dest == TEMP_REG && src0 == VERT_REG && src1 == VERT_REG )
+	else
 	{
-		// Swizzle source 0
-		temp0 = swizzle(VAB[src0Index], src0W, src0Z, src0Y, src0X);
-
-		// Swizzle source 1
-		temp1 = swizzle(VAB[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Any negation?
-		if(get_srcN_neg(instr, 0))
-		{
-			temp0.y = -temp0.y;
-			temp0.z = -temp0.z;
-		}
-
-		if(get_srcN_neg(instr, 1))
-		{
-			temp1.y = -temp1.y;
-			temp1.w = -temp1.w;
-		}
-
-		// Finally any masks?
-		if (destW) register_file[destIndex].w = temp1.w;
-		if (destZ) register_file[destIndex].z = temp0.z;
-		if (destY) register_file[destIndex].y = temp0.y * temp1.y;
-		if (destX) register_file[destIndex].x = 1.0;
-	}
-
-	// Output to VOB
-	// DST o[], r[], r[]
-	else if ( dest == OUT_REG && src0 == TEMP_REG && src1 == TEMP_REG )
-	{
-		// Swizzle source 0
-		temp0 = swizzle(register_file[src0Index], src0W, src0Z, src0Y, src0X);
-
-		// Swizzle source 1
-		temp1 = swizzle(register_file[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Any negation?
-		if(get_srcN_neg(instr, 0))
-		{
-			temp0.y = -temp0.y;
-			temp0.z = -temp0.z;
-		}
-
-		if(get_srcN_neg(instr, 1))
-		{
-			temp1.y = -temp1.y;
-			temp1.w = -temp1.w;
-		}
-
-		// Finally any masks?
 		if (destW) VOB[destIndex].w = temp1.w;
 		if (destZ) VOB[destIndex].z = temp0.z;
 		if (destY) VOB[destIndex].y = temp0.y * temp1.y;
 		if (destX) VOB[destIndex].x = 1.0;
-	}
-
-	// DST o[], v[], r[]
-	else if ( dest == OUT_REG && src0 == VERT_REG && src1 == TEMP_REG )
-	{
-		// Swizzle source 0
-		temp0 = swizzle(VAB[src0Index], src0W, src0Z, src0Y, src0X);
-
-		// Swizzle source 1
-		temp1 = swizzle(register_file[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Any negation?
-		if(get_srcN_neg(instr, 0))
-		{
-			temp0.y = -temp0.y;
-			temp0.z = -temp0.z;
-		}
-
-		if(get_srcN_neg(instr, 1))
-		{
-			temp1.y = -temp1.y;
-			temp1.w = -temp1.w;
-		}
-
-		// Finally any masks?
-		if (destW) VOB[destIndex].w = temp1.w;
-		if (destZ) VOB[destIndex].z = temp0.z;
-		if (destY) VOB[destIndex].y = temp0.y * temp1.y;
-		if (destX) VOB[destIndex].x = 1.0;
-	}
-
-	// DST o[], r[], v[]
-	else if ( dest == OUT_REG && src0 == TEMP_REG && src1 == VERT_REG )
-	{
-		// Swizzle source 0
-		temp0 = swizzle(register_file[src0Index], src0W, src0Z, src0Y, src0X);
-
-		// Swizzle source 1
-		temp1 = swizzle(VAB[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Any negation?
-		if(get_srcN_neg(instr, 0))
-		{
-			temp0.y = -temp0.y;
-			temp0.z = -temp0.z;
-		}
-
-		if(get_srcN_neg(instr, 1))
-		{
-			temp1.y = -temp1.y;
-			temp1.w = -temp1.w;
-		}
-
-		// Finally any masks?
-		if (destW) VOB[destIndex].w = temp1.w;
-		if (destZ) VOB[destIndex].z = temp0.z;
-		if (destY) VOB[destIndex].y = temp0.y * temp1.y;
-		if (destX) VOB[destIndex].x = 1.0;
-	}
-
-	// DST o[], v[], v[]
-	else if ( dest == OUT_REG && src0 == VERT_REG && src1 == VERT_REG )
-	{
-		// Swizzle source 0
-		temp0 = swizzle(VAB[src0Index], src0W, src0Z, src0Y, src0X);
-
-		// Swizzle source 1
-		temp1 = swizzle(VAB[src1Index], src1W, src1Z, src1Y, src1X);
-
-		// Any negation?
-		if(get_srcN_neg(instr, 0))
-		{
-			temp0.y = -temp0.y;
-			temp0.z = -temp0.z;
-		}
-
-		if(get_srcN_neg(instr, 1))
-		{
-			temp1.y = -temp1.y;
-			temp1.w = -temp1.w;
-		}
-
-		// Finally any masks?
-		if (destW) VOB[destIndex].w = temp1.w;
-		if (destZ) VOB[destIndex].z = temp0.z;
-		if (destY) VOB[destIndex].y = temp0.y * temp1.y;
-		if (destX) VOB[destIndex].x = 1.0;
-	}
+	}	
 }
 
 void gpu::min_instr(u64)

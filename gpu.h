@@ -14,6 +14,9 @@ private:
 
 	u128 register_file[12];
 	u128 constant_mem[96];
+
+	u128 main_mem[3][16];
+
 	u64 instruction_mem[128];
 
 	u128 VAB[16];

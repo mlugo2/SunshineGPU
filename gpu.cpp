@@ -1,6 +1,7 @@
 #include "gpu.h"
 
 #include <iostream>
+#include <cmath>
 using namespace std;
 
 gpu::gpu()
@@ -108,63 +109,63 @@ void gpu::geometry_processor()
 				break;
 
 			case 0x02:		// MUL
-				//mul_instr(instruction);
+				mul_instr(instruction);
 				break;
 
 			case 0x03:		// ADD
-
+				add_instr(instruction);
 				break;
 
 			case 0x04:		// MAD
-
+				mad_instr(instruction);
 				break;
 
 			case 0x05:		// DST
-
+				dst_instr(instruction);
 				break;
 
 			case 0x06:		// MIN
-
+				min_instr(instruction);
 				break;
 
 			case 0x07:		// MAX
-
+				max_instr(instruction);
 				break;
 
 			case 0x08:		// SLT
-
+				slt_instr(instruction);
 				break;
 
 			case 0x09:		// SGE
-
+				sge_instr(instruction);
 				break;
 
 			case 0x0A:		// RCP
-
+				rcp_instr(instruction);
 				break;
 
 			case 0x0B:		// RSQ
-
+				rsq_instr(instruction);
 				break;
 
 			case 0x0C:		// DP3
-
+				dp3_instr(instruction);
 				break;
 
 			case 0x0D:		// DP4
-
+				dp4_instr(instruction);
 				break;
 
 			case 0x0E:		// LOG
-
+				log_instr(instruction);
 				break;
 
 			case 0x0F:		// EXP
-
+				exp_instr(instruction);
 				break;
 
 			case 0x10:		// LIT
-
+				lit_instr(instruction);
 				break;
 
 			case 0x11:		// ARL
@@ -715,9 +716,6 @@ void gpu::mad_instr(u64 instr)
 		if (destY) VOB[destIndex].y = temp0.y * temp1.y + temp2.y;
 		if (destX) VOB[destIndex].x = temp0.x * temp1.x + temp2.x;
 	}
-
-	
-
 }
 
 void gpu::dst_instr(u64 instr)
@@ -781,58 +779,634 @@ void gpu::dst_instr(u64 instr)
 	}	
 }
 
-void gpu::min_instr(u64)
+void gpu::min_instr(u64 instr)
 {
+	u128 temp0, temp1;
 
+	// Determine destination and source paths
+	u8 dest = get_dest_type(instr);
+	u8 destIndex = get_dest_index(instr);
+	u8 destW = get_dest_w(instr);
+	u8 destZ = get_dest_z(instr);
+	u8 destY = get_dest_y(instr);
+	u8 destX = get_dest_x(instr);
+
+	u8 src0 = get_srcN_type(instr, 0);
+	u8 src0Index = get_srcN_index(instr, 0);
+	u8 src0W = get_srcN_w(instr, 0);
+	u8 src0Z = get_srcN_z(instr, 0);
+	u8 src0Y = get_srcN_y(instr, 0);
+	u8 src0X = get_srcN_x(instr, 0);
+
+	u8 src1 = get_srcN_type(instr, 1);
+	u8 src1Index = get_srcN_index(instr, 1);
+	u8 src1W = get_srcN_w(instr, 1);
+	u8 src1Z = get_srcN_z(instr, 1);
+	u8 src1Y = get_srcN_y(instr, 1);
+	u8 src1X = get_srcN_x(instr, 1);
+
+	// Swizzle it
+	temp0 = swizzle(main_mem[src0][src0Index], src0W, src0Z, src0Y, src0X);
+
+	temp1 = swizzle(main_mem[src1][src1Index], src1W, src1Z, src1Y, src1X);
+
+	// Negate it
+	if (get_srcN_neg(instr, 0))
+	{
+		temp0.x = -temp0.x;
+		temp0.y = -temp0.y;
+		temp0.z = -temp0.z;
+		temp0.w = -temp0.w;
+	}
+
+	if (get_srcN_neg(instr, 1))
+	{
+		temp1.x = -temp1.x;
+		temp1.y = -temp1.y;
+		temp1.z = -temp1.z;
+		temp1.w = -temp1.w;
+	}
+
+	// Bop it..
+	if ( dest == TEMP_REG )
+	{
+		if (destW) main_mem[dest][destIndex].w = (temp0.w < temp1.w) ? temp0.w : temp1.w;
+		if (destZ) main_mem[dest][destIndex].z = (temp0.z < temp1.z) ? temp0.z : temp1.z;
+		if (destY) main_mem[dest][destIndex].y = (temp0.y < temp1.y) ? temp0.y : temp1.y;
+		if (destX) main_mem[dest][destIndex].x = (temp0.x < temp1.x) ? temp0.x : temp1.x;
+	}
+	else
+	{
+		if (destW) VOB[destIndex].w = (temp0.w < temp1.w) ? temp0.w : temp1.w;
+		if (destZ) VOB[destIndex].z = (temp0.z < temp1.z) ? temp0.z : temp1.z;
+		if (destY) VOB[destIndex].y = (temp0.y < temp1.y) ? temp0.y : temp1.y;
+		if (destX) VOB[destIndex].x = (temp0.x < temp1.x) ? temp0.x : temp1.x;
+	}
 }
 
-void gpu::max_instr(u64)
+void gpu::max_instr(u64 instr)
 {
+	u128 temp0, temp1;
 
+	// Determine destination and source paths
+	u8 dest = get_dest_type(instr);
+	u8 destIndex = get_dest_index(instr);
+	u8 destW = get_dest_w(instr);
+	u8 destZ = get_dest_z(instr);
+	u8 destY = get_dest_y(instr);
+	u8 destX = get_dest_x(instr);
+
+	u8 src0 = get_srcN_type(instr, 0);
+	u8 src0Index = get_srcN_index(instr, 0);
+	u8 src0W = get_srcN_w(instr, 0);
+	u8 src0Z = get_srcN_z(instr, 0);
+	u8 src0Y = get_srcN_y(instr, 0);
+	u8 src0X = get_srcN_x(instr, 0);
+
+	u8 src1 = get_srcN_type(instr, 1);
+	u8 src1Index = get_srcN_index(instr, 1);
+	u8 src1W = get_srcN_w(instr, 1);
+	u8 src1Z = get_srcN_z(instr, 1);
+	u8 src1Y = get_srcN_y(instr, 1);
+	u8 src1X = get_srcN_x(instr, 1);
+
+	// Swizzle it
+	temp0 = swizzle(main_mem[src0][src0Index], src0W, src0Z, src0Y, src0X);
+
+	temp1 = swizzle(main_mem[src1][src1Index], src1W, src1Z, src1Y, src1X);
+
+	// Negate it
+	if (get_srcN_neg(instr, 0))
+	{
+		temp0.x = -temp0.x;
+		temp0.y = -temp0.y;
+		temp0.z = -temp0.z;
+		temp0.w = -temp0.w;
+	}
+
+	if (get_srcN_neg(instr, 1))
+	{
+		temp1.x = -temp1.x;
+		temp1.y = -temp1.y;
+		temp1.z = -temp1.z;
+		temp1.w = -temp1.w;
+	}
+
+	// Bop it..
+	if ( dest == TEMP_REG )
+	{
+		if (destW) main_mem[dest][destIndex].w = (temp0.w >= temp1.w) ? temp0.w : temp1.w;
+		if (destZ) main_mem[dest][destIndex].z = (temp0.z >= temp1.z) ? temp0.z : temp1.z;
+		if (destY) main_mem[dest][destIndex].y = (temp0.y >= temp1.y) ? temp0.y : temp1.y;
+		if (destX) main_mem[dest][destIndex].x = (temp0.x >= temp1.x) ? temp0.x : temp1.x;
+	}
+	else
+	{
+		if (destW) VOB[destIndex].w = (temp0.w >= temp1.w) ? temp0.w : temp1.w;
+		if (destZ) VOB[destIndex].z = (temp0.z >= temp1.z) ? temp0.z : temp1.z;
+		if (destY) VOB[destIndex].y = (temp0.y >= temp1.y) ? temp0.y : temp1.y;
+		if (destX) VOB[destIndex].x = (temp0.x >= temp1.x) ? temp0.x : temp1.x;
+	}
 }
 
-void gpu::slt_instr(u64)
+void gpu::slt_instr(u64 instr)
 {
+	u128 temp0, temp1;
 
+	// Determine destination and source paths
+	u8 dest = get_dest_type(instr);
+	u8 destIndex = get_dest_index(instr);
+	u8 destW = get_dest_w(instr);
+	u8 destZ = get_dest_z(instr);
+	u8 destY = get_dest_y(instr);
+	u8 destX = get_dest_x(instr);
+
+	u8 src0 = get_srcN_type(instr, 0);
+	u8 src0Index = get_srcN_index(instr, 0);
+	u8 src0W = get_srcN_w(instr, 0);
+	u8 src0Z = get_srcN_z(instr, 0);
+	u8 src0Y = get_srcN_y(instr, 0);
+	u8 src0X = get_srcN_x(instr, 0);
+
+	u8 src1 = get_srcN_type(instr, 1);
+	u8 src1Index = get_srcN_index(instr, 1);
+	u8 src1W = get_srcN_w(instr, 1);
+	u8 src1Z = get_srcN_z(instr, 1);
+	u8 src1Y = get_srcN_y(instr, 1);
+	u8 src1X = get_srcN_x(instr, 1);
+
+	// Swizzle it
+	temp0 = swizzle(main_mem[src0][src0Index], src0W, src0Z, src0Y, src0X);
+
+	temp1 = swizzle(main_mem[src1][src1Index], src1W, src1Z, src1Y, src1X);
+
+	// Negate it
+	if (get_srcN_neg(instr, 0))
+	{
+		temp0.x = -temp0.x;
+		temp0.y = -temp0.y;
+		temp0.z = -temp0.z;
+		temp0.w = -temp0.w;
+	}
+
+	if (get_srcN_neg(instr, 1))
+	{
+		temp1.x = -temp1.x;
+		temp1.y = -temp1.y;
+		temp1.z = -temp1.z;
+		temp1.w = -temp1.w;
+	}
+
+	// Bop it..
+	if ( dest == TEMP_REG )
+	{
+		if (destW) main_mem[dest][destIndex].w = (temp0.w < temp1.w) ? 1.0 : 0.0;
+		if (destZ) main_mem[dest][destIndex].z = (temp0.z < temp1.z) ? 1.0 : 0.0;
+		if (destY) main_mem[dest][destIndex].y = (temp0.y < temp1.y) ? 1.0 : 0.0;
+		if (destX) main_mem[dest][destIndex].x = (temp0.x < temp1.x) ? 1.0 : 0.0;
+	}
+	else
+	{
+		if (destW) VOB[destIndex].w = (temp0.w < temp1.w) ? 1.0 : 0.0;
+		if (destZ) VOB[destIndex].z = (temp0.z < temp1.z) ? 1.0 : 0.0;
+		if (destY) VOB[destIndex].y = (temp0.y < temp1.y) ? 1.0 : 0.0;
+		if (destX) VOB[destIndex].x = (temp0.x < temp1.x) ? 1.0 : 0.0;
+	}
 }
 
-void gpu::sge_instr(u64)
+void gpu::sge_instr(u64 instr)
 {
+	u128 temp0, temp1;
 
+	// Determine destination and source paths
+	u8 dest = get_dest_type(instr);
+	u8 destIndex = get_dest_index(instr);
+	u8 destW = get_dest_w(instr);
+	u8 destZ = get_dest_z(instr);
+	u8 destY = get_dest_y(instr);
+	u8 destX = get_dest_x(instr);
+
+	u8 src0 = get_srcN_type(instr, 0);
+	u8 src0Index = get_srcN_index(instr, 0);
+	u8 src0W = get_srcN_w(instr, 0);
+	u8 src0Z = get_srcN_z(instr, 0);
+	u8 src0Y = get_srcN_y(instr, 0);
+	u8 src0X = get_srcN_x(instr, 0);
+
+	u8 src1 = get_srcN_type(instr, 1);
+	u8 src1Index = get_srcN_index(instr, 1);
+	u8 src1W = get_srcN_w(instr, 1);
+	u8 src1Z = get_srcN_z(instr, 1);
+	u8 src1Y = get_srcN_y(instr, 1);
+	u8 src1X = get_srcN_x(instr, 1);
+
+	// Swizzle it
+	temp0 = swizzle(main_mem[src0][src0Index], src0W, src0Z, src0Y, src0X);
+
+	temp1 = swizzle(main_mem[src1][src1Index], src1W, src1Z, src1Y, src1X);
+
+	// Negate it
+	if (get_srcN_neg(instr, 0))
+	{
+		temp0.x = -temp0.x;
+		temp0.y = -temp0.y;
+		temp0.z = -temp0.z;
+		temp0.w = -temp0.w;
+	}
+
+	if (get_srcN_neg(instr, 1))
+	{
+		temp1.x = -temp1.x;
+		temp1.y = -temp1.y;
+		temp1.z = -temp1.z;
+		temp1.w = -temp1.w;
+	}
+
+	// Bop it..
+	if ( dest == TEMP_REG )
+	{
+		if (destW) main_mem[dest][destIndex].w = (temp0.w >= temp1.w) ? 1.0 : 0.0;
+		if (destZ) main_mem[dest][destIndex].z = (temp0.z >= temp1.z) ? 1.0 : 0.0;
+		if (destY) main_mem[dest][destIndex].y = (temp0.y >= temp1.y) ? 1.0 : 0.0;
+		if (destX) main_mem[dest][destIndex].x = (temp0.x >= temp1.x) ? 1.0 : 0.0;
+	}
+	else
+	{
+		if (destW) VOB[destIndex].w = (temp0.w >= temp1.w) ? 1.0 : 0.0;
+		if (destZ) VOB[destIndex].z = (temp0.z >= temp1.z) ? 1.0 : 0.0;
+		if (destY) VOB[destIndex].y = (temp0.y >= temp1.y) ? 1.0 : 0.0;
+		if (destX) VOB[destIndex].x = (temp0.x >= temp1.x) ? 1.0 : 0.0;
+	}
 }
 
-void gpu::rcp_instr(u64)
+void gpu::rcp_instr(u64 instr)
 {
+	u128 temp;
 
+	// Determine destination and source paths
+	u8 dest = get_dest_type(instr);
+	u8 destIndex = get_dest_index(instr);
+	u8 destW = get_dest_w(instr);
+	u8 destZ = get_dest_z(instr);
+	u8 destY = get_dest_y(instr);
+	u8 destX = get_dest_x(instr);
+
+	u8 src = get_srcN_type(instr, 0);
+	u8 srcIndex = get_srcN_index(instr, 0);
+	u8 srcW = get_srcN_w(instr, 0);
+	u8 srcZ = get_srcN_z(instr, 0);
+	u8 srcY = get_srcN_y(instr, 0);
+	u8 srcX = get_srcN_x(instr, 0);
+
+	// Swizzle it
+	temp = swizzle(main_mem[src][srcIndex], srcW, srcZ, srcY, srcX);
+
+	if (get_srcN_neg(instr, 0))
+	{
+		temp.x = -temp.x;
+	}
+
+	if ( temp.x == 1.0 )
+		temp.x = 1;
+	else {
+		temp.x = 1.0 / temp.x;
+	}
+
+	// Bop it..
+	if ( dest == TEMP_REG )
+	{
+		if (destW) main_mem[dest][destIndex].w = temp.x;
+		if (destZ) main_mem[dest][destIndex].z = temp.x;
+		if (destY) main_mem[dest][destIndex].y = temp.x;
+		if (destX) main_mem[dest][destIndex].x = temp.x;
+	}
+	else
+	{
+		if (destW) VOB[destIndex].w = temp.x;
+		if (destZ) VOB[destIndex].z = temp.x;
+		if (destY) VOB[destIndex].y = temp.x;
+		if (destX) VOB[destIndex].x = temp.x;
+	}
 }
 
-void gpu::rsq_instr(u64)
+void gpu::rsq_instr(u64 instr)
 {
+	u128 temp;
 
+	// Determine destination and source paths
+	u8 dest = get_dest_type(instr);
+	u8 destIndex = get_dest_index(instr);
+	u8 destW = get_dest_w(instr);
+	u8 destZ = get_dest_z(instr);
+	u8 destY = get_dest_y(instr);
+	u8 destX = get_dest_x(instr);
+
+	u8 src = get_srcN_type(instr, 0);
+	u8 srcIndex = get_srcN_index(instr, 0);
+	u8 srcW = get_srcN_w(instr, 0);
+	u8 srcZ = get_srcN_z(instr, 0);
+	u8 srcY = get_srcN_y(instr, 0);
+	u8 srcX = get_srcN_x(instr, 0);
+
+	// Swizzle it
+	temp = swizzle(main_mem[src][srcIndex], srcW, srcZ, srcY, srcX);
+
+	if (get_srcN_neg(instr, 0))
+	{
+		temp.x = -temp.x;
+	}
+
+	temp.x = 1.0 / sqrt(abs(temp.x));
+
+	// Bop it..
+	if ( dest == TEMP_REG )
+	{
+		if (destW) main_mem[dest][destIndex].w = temp.x;
+		if (destZ) main_mem[dest][destIndex].z = temp.x;
+		if (destY) main_mem[dest][destIndex].y = temp.x;
+		if (destX) main_mem[dest][destIndex].x = temp.x;
+	}
+	else
+	{
+		if (destW) VOB[destIndex].w = temp.x;
+		if (destZ) VOB[destIndex].z = temp.x;
+		if (destY) VOB[destIndex].y = temp.x;
+		if (destX) VOB[destIndex].x = temp.x;
+	}
 }
 
-void gpu::dp3_instr(u64)
+void gpu::dp3_instr(u64 instr)
 {
+	u128 temp0, temp1;
 
+	// Determine destination and source paths
+	u8 dest = get_dest_type(instr);
+	u8 destIndex = get_dest_index(instr);
+	u8 destW = get_dest_w(instr);
+	u8 destZ = get_dest_z(instr);
+	u8 destY = get_dest_y(instr);
+	u8 destX = get_dest_x(instr);
+
+	u8 src0 = get_srcN_type(instr, 0);
+	u8 src0Index = get_srcN_index(instr, 0);
+	u8 src0W = get_srcN_w(instr, 0);
+	u8 src0Z = get_srcN_z(instr, 0);
+	u8 src0Y = get_srcN_y(instr, 0);
+	u8 src0X = get_srcN_x(instr, 0);
+
+	u8 src1 = get_srcN_type(instr, 1);
+	u8 src1Index = get_srcN_index(instr, 1);
+	u8 src1W = get_srcN_w(instr, 1);
+	u8 src1Z = get_srcN_z(instr, 1);
+	u8 src1Y = get_srcN_y(instr, 1);
+	u8 src1X = get_srcN_x(instr, 1);
+
+	// Swizzle it
+	temp0 = swizzle(main_mem[src0][src0Index], src0W, src0Z, src0Y, src0X);
+
+	temp1 = swizzle(main_mem[src1][src1Index], src1W, src1Z, src1Y, src1X);
+
+	// Negate it
+	if (get_srcN_neg(instr, 0))
+	{
+		temp0.x = -temp0.x;
+		temp0.y = -temp0.y;
+		temp0.z = -temp0.z;
+	}
+
+	if (get_srcN_neg(instr, 1))
+	{
+		temp1.x = -temp1.x;
+		temp1.y = -temp1.y;
+		temp1.z = -temp1.z;
+	}
+
+	temp0.x = temp0.x * temp1.x + temp0.y * temp1.y + temp0.z * temp1.z;
+	// Bop it..
+	if ( dest == TEMP_REG )
+	{
+		if (destW) main_mem[dest][destIndex].w = temp0.x;
+		if (destZ) main_mem[dest][destIndex].z = temp0.x;
+		if (destY) main_mem[dest][destIndex].y = temp0.x;
+		if (destX) main_mem[dest][destIndex].x = temp0.x;
+	}
+	else
+	{
+		if (destW) VOB[destIndex].w = temp0.x;
+		if (destZ) VOB[destIndex].z = temp0.x;
+		if (destY) VOB[destIndex].y = temp0.x;
+		if (destX) VOB[destIndex].x = temp0.x;
+	}
 }
 
-void gpu::dp4_instr(u64)
+void gpu::dp4_instr(u64 instr)
 {
+	u128 temp0, temp1;
 
+	// Determine destination and source paths
+	u8 dest = get_dest_type(instr);
+	u8 destIndex = get_dest_index(instr);
+	u8 destW = get_dest_w(instr);
+	u8 destZ = get_dest_z(instr);
+	u8 destY = get_dest_y(instr);
+	u8 destX = get_dest_x(instr);
+
+	u8 src0 = get_srcN_type(instr, 0);
+	u8 src0Index = get_srcN_index(instr, 0);
+	u8 src0W = get_srcN_w(instr, 0);
+	u8 src0Z = get_srcN_z(instr, 0);
+	u8 src0Y = get_srcN_y(instr, 0);
+	u8 src0X = get_srcN_x(instr, 0);
+
+	u8 src1 = get_srcN_type(instr, 1);
+	u8 src1Index = get_srcN_index(instr, 1);
+	u8 src1W = get_srcN_w(instr, 1);
+	u8 src1Z = get_srcN_z(instr, 1);
+	u8 src1Y = get_srcN_y(instr, 1);
+	u8 src1X = get_srcN_x(instr, 1);
+
+	// Swizzle it
+	temp0 = swizzle(main_mem[src0][src0Index], src0W, src0Z, src0Y, src0X);
+
+	temp1 = swizzle(main_mem[src1][src1Index], src1W, src1Z, src1Y, src1X);
+
+	// Negate it
+	if (get_srcN_neg(instr, 0))
+	{
+		temp0.x = -temp0.x;
+		temp0.y = -temp0.y;
+		temp0.z = -temp0.z;
+		temp0.w = -temp0.w;
+	}
+
+	if (get_srcN_neg(instr, 1))
+	{
+		temp1.x = -temp1.x;
+		temp1.y = -temp1.y;
+		temp1.z = -temp1.z;
+		temp1.w = -temp1.w;
+	}
+
+	temp0.x = temp0.x * temp1.x + temp0.y * temp1.y + temp0.z * temp1.z + temp0.w + temp1.w;
+	// Bop it..
+	if ( dest == TEMP_REG )
+	{
+		if (destW) main_mem[dest][destIndex].w = temp0.x;
+		if (destZ) main_mem[dest][destIndex].z = temp0.x;
+		if (destY) main_mem[dest][destIndex].y = temp0.x;
+		if (destX) main_mem[dest][destIndex].x = temp0.x;
+	}
+	else
+	{
+		if (destW) VOB[destIndex].w = temp0.x;
+		if (destZ) VOB[destIndex].z = temp0.x;
+		if (destY) VOB[destIndex].y = temp0.x;
+		if (destX) VOB[destIndex].x = temp0.x;
+	}
 }
 
-void gpu::log_instr(u64)
+void gpu::log_instr(u64 instr)
 {
+	u128 temp;
 
+	// Determine destination and source paths
+	u8 dest = get_dest_type(instr);
+	u8 destIndex = get_dest_index(instr);
+	u8 destW = get_dest_w(instr);
+	u8 destZ = get_dest_z(instr);
+	u8 destY = get_dest_y(instr);
+	u8 destX = get_dest_x(instr);
+
+	u8 src = get_srcN_type(instr, 0);
+	u8 srcIndex = get_srcN_index(instr, 0);
+	u8 srcW = get_srcN_w(instr, 0);
+	u8 srcZ = get_srcN_z(instr, 0);
+	u8 srcY = get_srcN_y(instr, 0);
+	u8 srcX = get_srcN_x(instr, 0);
+
+	// Swizzle it
+	temp = swizzle(main_mem[src][srcIndex], srcW, srcZ, srcY, srcX);
+
+	// Negate it
+	if (get_srcN_neg(instr, 0))
+	{
+		temp.x = -temp.x;
+	}
+
+	temp.x = (log(temp.x)/log(2));
+
+	// Bop it..
+	if ( dest == TEMP_REG )
+	{
+		if (destW) main_mem[dest][destIndex].w = 1.0;
+		if (destZ) main_mem[dest][destIndex].z = temp.x;
+		if (destY) main_mem[dest][destIndex].y = temp.x;
+		if (destX) main_mem[dest][destIndex].x = temp.x;
+	}
+	else
+	{
+		if (destW) VOB[destIndex].w = 1.0;
+		if (destZ) VOB[destIndex].z = temp.x;
+		if (destY) VOB[destIndex].y = temp.x;
+		if (destX) VOB[destIndex].x = temp.x;
+	}
 }
 
-void gpu::exp_instr(u64)
+void gpu::exp_instr(u64 instr)
 {
+	u128 temp;
 
+	// Determine destination and source paths
+	u8 dest = get_dest_type(instr);
+	u8 destIndex = get_dest_index(instr);
+	u8 destW = get_dest_w(instr);
+	u8 destZ = get_dest_z(instr);
+	u8 destY = get_dest_y(instr);
+	u8 destX = get_dest_x(instr);
+
+	u8 src = get_srcN_type(instr, 0);
+	u8 srcIndex = get_srcN_index(instr, 0);
+	u8 srcW = get_srcN_w(instr, 0);
+	u8 srcZ = get_srcN_z(instr, 0);
+	u8 srcY = get_srcN_y(instr, 0);
+	u8 srcX = get_srcN_x(instr, 0);
+
+	// Swizzle it
+	temp = swizzle(main_mem[src][srcIndex], srcW, srcZ, srcY, srcX);
+
+	// Negate it
+	if (get_srcN_neg(instr, 0))
+	{
+		temp.x = -temp.x;
+	}
+
+	temp.x = pow(2, temp.x);
+
+	// Bop it..
+	if ( dest == TEMP_REG )
+	{
+		if (destW) main_mem[dest][destIndex].w = 1.0;
+		if (destZ) main_mem[dest][destIndex].z = temp.x;
+		if (destY) main_mem[dest][destIndex].y = temp.x;
+		if (destX) main_mem[dest][destIndex].x = temp.x;
+	}
+	else
+	{
+		if (destW) VOB[destIndex].w = 1.0;
+		if (destZ) VOB[destIndex].z = temp.x;
+		if (destY) VOB[destIndex].y = temp.x;
+		if (destX) VOB[destIndex].x = temp.x;
+	}
 }
 
-void gpu::lit_instr(u64)
+void gpu::lit_instr(u64 instr)
 {
+	u128 temp;
+
+	// Determine destination and source paths
+	u8 dest = get_dest_type(instr);
+	u8 destIndex = get_dest_index(instr);
+	u8 destW = get_dest_w(instr);
+	u8 destZ = get_dest_z(instr);
+	u8 destY = get_dest_y(instr);
+	u8 destX = get_dest_x(instr);
+
+	u8 src = get_srcN_type(instr, 0);
+	u8 srcIndex = get_srcN_index(instr, 0);
+	u8 srcW = get_srcN_w(instr, 0);
+	u8 srcZ = get_srcN_z(instr, 0);
+	u8 srcY = get_srcN_y(instr, 0);
+	u8 srcX = get_srcN_x(instr, 0);
+
+	// Swizzle it
+	temp = swizzle(main_mem[src][srcIndex], srcW, srcZ, srcY, srcX);
+
+	// Negate it
+	if (get_srcN_neg(instr, 0))
+	{
+		temp.x = -temp.x;
+	}
+
+	if (temp.w < -(128.0-(1.0/256.0))) temp.w = -(128.0 - (1.0/256.0));
+	else if ( temp.w > 128-(1.0/256.0)) temp.w = 128.0 - (1.0/256.0);
+	if (temp.x < 0.0) temp.x = 0.0;
+	if (temp.y < 0.0) temp.y = 0.0;
+
+	// Bop it..
+	if ( dest == TEMP_REG )
+	{
+		if (destW) main_mem[dest][destIndex].w = 1.0;
+		if (destZ) main_mem[dest][destIndex].z = temp.x;
+		if (destY) main_mem[dest][destIndex].y = temp.x;
+		if (destX) main_mem[dest][destIndex].x = temp.x;
+	}
+	else
+	{
+		if (destW) VOB[destIndex].w = 1.0;
+		if (destZ) VOB[destIndex].z = (temp.x > 0.0) ? pow(2, temp.w*(log(temp.y)/log(2))) : 0.0;
+		if (destY) VOB[destIndex].y = temp.x;
+		if (destX) VOB[destIndex].x = 1.0;
+	}
 
 }
 

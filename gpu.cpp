@@ -23,13 +23,13 @@ void gpu::execute( u8 FB[][SCREEN_WIDTH][3] )
 void gpu::load_const_mem()
 {
 	// Transform matrix
-	constant_mem[0].x = 1.0; constant_mem[0].y = 0.0; constant_mem[0].z = 0.0; constant_mem[0].w = 0.0;
-	constant_mem[1].x = 0.0; constant_mem[1].y = 1.0; constant_mem[1].z = 0.0; constant_mem[1].w = 0.0;
-	constant_mem[2].x = 0.0; constant_mem[2].y = 0.0; constant_mem[2].z = 1.0; constant_mem[2].w = 0.0;
-	constant_mem[3].x = 0.0; constant_mem[3].y = 0.0; constant_mem[3].z = 0.0; constant_mem[3].w = 1.0;
+	main_mem[CONST_REG][0].x = 1.0; main_mem[CONST_REG][0].y = 0.0; main_mem[CONST_REG][0].z = 0.0; main_mem[CONST_REG][0].w = 0.0;
+	main_mem[CONST_REG][1].x = 0.0; main_mem[CONST_REG][1].y = 1.0; main_mem[CONST_REG][1].z = 0.0; main_mem[CONST_REG][1].w = 0.0;
+	main_mem[CONST_REG][2].x = 0.0; main_mem[CONST_REG][2].y = 0.0; main_mem[CONST_REG][2].z = 1.0; main_mem[CONST_REG][2].w = 0.0;
+	main_mem[CONST_REG][3].x = 0.0; main_mem[CONST_REG][3].y = 0.0; main_mem[CONST_REG][3].z = 0.0; main_mem[CONST_REG][3].w = 1.0;
 
 	// Light vector
-	constant_mem[4].x = 0.0; constant_mem[4].y = 0.0; constant_mem[4].z = 0.0; constant_mem[4].w = 0.0;
+	main_mem[CONST_REG][4].x = 0.0; main_mem[CONST_REG][4].y = 0.0; main_mem[CONST_REG][4].z = 0.0; main_mem[CONST_REG][4].w = 0.0;
 }
 
 void gpu::load_microcode(vector<u64> vs)
@@ -185,13 +185,6 @@ void gpu::rendering_engine(u8 FB[][SCREEN_WIDTH][3])
 	// Here we do all the projection and other stuff..
 	projection(VOB);
 	rasteration(VOB, FB);
-
-	// cout << "VOB stuff......." << endl;
-	// cout << VOB[0].x << " " << VOB[0].y << " " << VOB[0].z << " " << VOB[0].w << " " << endl;
-	// cout << VOB[1].x << " " << VOB[1].y << " " << VOB[1].z << " " << VOB[1].w << " " << endl;
-	// cout << VOB[2].x << " " << VOB[2].y << " " << VOB[2].z << " " << VOB[2].w << " " << endl;
-	// cout << VOB[3].x << " " << VOB[3].y << " " << VOB[3].z << " " << VOB[3].w << " " << endl;
-	// cout << endl;
 }
 
 void gpu::projection(u128 *VOB)
@@ -269,6 +262,7 @@ u8 gpu::get_opcode(u64 instr)
 
 u8 gpu::get_dest_type(u64 instr)
 {
+	instr &= 0x100000000000000;
 	instr >>= 56;
 	return (u8)instr;
 }
@@ -1201,6 +1195,7 @@ void gpu::dp3_instr(u64 instr)
 
 void gpu::dp4_instr(u64 instr)
 {
+
 	u128 temp0, temp1;
 
 	// Determine destination and source paths
@@ -1247,8 +1242,9 @@ void gpu::dp4_instr(u64 instr)
 		temp1.w = -temp1.w;
 	}
 
-	temp0.x = temp0.x * temp1.x + temp0.y * temp1.y + temp0.z * temp1.z + temp0.w + temp1.w;
-	// Bop it..
+	temp0.x = temp0.x * temp1.x + temp0.y * temp1.y + temp0.z * temp1.z + temp0.w * temp1.w;
+	// Bop it..	
+
 	if ( dest == TEMP_REG )
 	{
 		if (destW) main_mem[dest][destIndex].w = temp0.x;
@@ -1258,6 +1254,7 @@ void gpu::dp4_instr(u64 instr)
 	}
 	else
 	{
+
 		if (destW) VOB[destIndex].w = temp0.x;
 		if (destZ) VOB[destIndex].z = temp0.x;
 		if (destY) VOB[destIndex].y = temp0.x;

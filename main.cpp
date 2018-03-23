@@ -45,13 +45,18 @@ int main(int argc, char const *argv[])
 
 	// GPU execution begins here
 	// Run the GPU for the number of faces available
-	int i = 0;
-	while (f.size() != i)
+	while (1)
 	{
-		myGPU->load_vab(v, f[i]); i++;
-		myGPU->execute(FB);
+		// Get inputs
+		input();
+		
+		int i = 0;
+		while (f.size() != i)
+		{
+			myGPU->load_vab(v, f[i]); i++;
+			myGPU->execute(FB);
+		}
 	}
-
 	t1.join();
 
 	return 0;

@@ -1,6 +1,8 @@
 #ifndef __MAIN_H
 #define __MAIN_H
 
+#include <SDL2/SDL.h>
+
 #include "stringproc.h"
 void object_file_interface(std::string fileName, 
 	std::vector<std::vector<float> > *vertex, 
@@ -148,6 +150,16 @@ void vertex_shader_interface(std::string fileName,
 		vertexShader->push_back(stoull(i,0,0));
 	}
 
+}
+
+void input()
+{
+	// Read keyboard input
+	const Uint8* currentKeyStates = SDL_GetKeyboardState( NULL );
+	if ( currentKeyStates[ SDL_SCANCODE_A ])
+	{
+		std::cout << "Key pressed" << std::endl;
+	}
 }
 
 #endif

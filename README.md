@@ -1,6 +1,6 @@
 # Sunshine GPU
 
-Is an emulator for a simple programmable GPU.  It is meant for anyone who is interested in the inner workings of a GPU; it includes a programmable vertex engine with its own instruction set.
+An emulator for a simple programmable GPU.  It is meant for anyone who is interested in the inner workings of a GPU; it includes a programmable vertex engine with its own instruction set.
 
 ## Getting Started
 
@@ -16,10 +16,12 @@ apt-get install libsdl2-dev
 
 ### Building
 
-Make a copy on your local machine:
+Make a copy on your local machine and change directory into the project folder:
 
 ```
-Give the example
+git clone https://github.com/mlugo2/SunshineGPU.git
+
+cd SunshineGPU
 ```
 
 Build the project:
@@ -30,8 +32,8 @@ make
 
 ### Running
 
-Explain what these tests test and why
+To run the emulator you'll need a vertices object file, vertex shader hex file, and a constants file: 
 
 ```
-Give an example
+./gpu teapot.off trans.hex ident.const
 ```

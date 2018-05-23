@@ -86,9 +86,13 @@ public:
 	~gpu();
 
 	void execute( u8[][SCREEN_WIDTH][3]);
-	void load_const_mem();
+	void load_const_mem(vector<float> constants);
 	void load_microcode(vector<u64>);
 	void load_vab( vector<vector<float> >, vector<int>);
+
+	void rotate(float *, float*, float*, float*);
+
+	void refresh_screen(u128[], u8[][SCREEN_WIDTH][3]);
 	
 };
 

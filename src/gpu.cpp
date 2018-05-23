@@ -1,6 +1,7 @@
-#include "gpu.h"
+#include <gpu.h>
 
 #include <iostream>
+#include <unistd.h>
 #include <cmath>
 using namespace std;
 
@@ -20,16 +21,18 @@ void gpu::execute( u8 FB[][SCREEN_WIDTH][3] )
 	rendering_engine(FB);
 }
 
-void gpu::load_const_mem()
+void gpu::load_const_mem(vector<float> constants)
 {
-	// Transform matrix
-	main_mem[CONST_REG][0].x = 1.0; main_mem[CONST_REG][0].y = 0.0; main_mem[CONST_REG][0].z = 0.0; main_mem[CONST_REG][0].w = 0.0;
-	main_mem[CONST_REG][1].x = 0.0; main_mem[CONST_REG][1].y = 1.0; main_mem[CONST_REG][1].z = 0.0; main_mem[CONST_REG][1].w = 0.0;
-	main_mem[CONST_REG][2].x = 0.0; main_mem[CONST_REG][2].y = 0.0; main_mem[CONST_REG][2].z = 1.0; main_mem[CONST_REG][2].w = 0.0;
-	main_mem[CONST_REG][3].x = 0.0; main_mem[CONST_REG][3].y = 0.0; main_mem[CONST_REG][3].z = 0.0; main_mem[CONST_REG][3].w = 1.0;
-
-	// Light vector
-	main_mem[CONST_REG][4].x = 0.0; main_mem[CONST_REG][4].y = 0.0; main_mem[CONST_REG][4].z = 0.0; main_mem[CONST_REG][4].w = 0.0;
+	// Load this baby up.
+	int index = 0;
+	for ( int i = 0; i < constants.size(); i += 4 )
+	{
+		main_mem[CONST_REG][index].x = constants[i];
+		main_mem[CONST_REG][index].y = constants[i+1];
+		main_mem[CONST_REG][index].z = constants[i+2];
+		main_mem[CONST_REG][index].w = constants[i+3];
+		index++;
+	}
 }
 
 void gpu::load_microcode(vector<u64> vs)
@@ -71,13 +74,12 @@ void gpu::load_vab( vector<vector<float> > v, vector<int> f)
 	main_mem[VERT_REG][3].w = 1.0;
 
 	// Set default color
-	main_mem[VERT_REG][4].x = 15;
-	main_mem[VERT_REG][4].y = 90;
-	main_mem[VERT_REG][4].z = 23;
+	main_mem[VERT_REG][4].x = 255;
+	main_mem[VERT_REG][4].y = 255;
+	main_mem[VERT_REG][4].z = 255;
 	main_mem[VERT_REG][4].w = 1.0;
 
 }
-
 
 /********************************************************
  *					Pipeline Components					*
@@ -93,7 +95,7 @@ void gpu::geometry_processor()
 
 	bool end = false;
 
-	// Start decoding
+	// Start
 	while (!end)
 	{
 		// Fetch
@@ -237,9 +239,10 @@ void gpu::rasteration(u128 VOB[], u8 FB[][SCREEN_WIDTH][3])
 				// Write to buffer or not
 				if ( z < ZB[j][k])
 				{
+					// Update Z-buffer
 					ZB[j][k] = (u8)z;
 
-					// Render baby, render
+					// Render 
 					FB[j][k][0] = VOB[3].x;	// R
 					FB[j][k][1] = VOB[3].y; // G
 					FB[j][k][2] = VOB[3].z; // B

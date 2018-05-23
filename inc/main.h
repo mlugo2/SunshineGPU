@@ -11,6 +11,9 @@ void object_file_interface(std::string fileName,
 void vertex_shader_interface(std::string fileName, 
 	std::vector<unsigned long long int > *vertexShader );
 
+void constant_file_interface(std::string fileName,
+	std::vector<float> *constants);
+
 void object_file_interface(std::string fileName, 
 	std::vector<std::vector<float> > *vertex, 
 	std::vector<std::vector<int> > *face)
@@ -152,14 +155,42 @@ void vertex_shader_interface(std::string fileName,
 
 }
 
-void input()
+#include <iostream>
+using namespace std;
+
+void constant_file_interface(std::string fileName,
+	std::vector<float> *constants)
 {
-	// Read keyboard input
-	const Uint8* currentKeyStates = SDL_GetKeyboardState( NULL );
-	if ( currentKeyStates[ SDL_SCANCODE_A ])
+	// Opening file
+	std::ifstream myFile;
+	myFile.open(fileName.data());
+
+	// Read file into vector for easier processing
+	std::vector<std::string> data;
+	std::string line;
+	while( myFile.good() )
 	{
-		std::cout << "Key pressed" << std::endl;
+		getline(myFile, line);
+		line[line.length()] = '\0';
+		data.push_back(line);
 	}
+
+	myFile.close();
+
+	// Tokenize data
+	std::string delims = " \t\n,";
+	std::vector<std::string> tempData;
+
+	// Store tokenized data into tempData
+	for ( auto i : data )
+	{
+		tokenize(i, tempData, delims);
+	}
+
+	for ( auto i : tempData )
+	{
+		constants->push_back(std::stof(i));
+	}		
 }
 
 #endif

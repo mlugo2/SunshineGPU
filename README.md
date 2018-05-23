@@ -37,3 +37,7 @@ To run the emulator you'll need a vertices object file, vertex shader hex file, 
 ```
 ./gpu teapot.off trans.hex ident.const
 ```
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
